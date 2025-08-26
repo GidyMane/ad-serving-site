@@ -108,8 +108,8 @@ export async function GET(request: NextRequest) {
                COUNT(*) as total,
                COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
                COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,
-               COUNT(CASE WHEN e.type = 'open' THEN 1 END) as opens,
-               COUNT(CASE WHEN e.type = 'click' THEN 1 END) as clicks
+               COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
+               COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e
         INNER JOIN "Email" em ON e."emailId" = em.id
         WHERE em."domainId" = ANY($1)
@@ -122,8 +122,8 @@ export async function GET(request: NextRequest) {
                COUNT(*) as total,
                COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
                COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,
-               COUNT(CASE WHEN e.type = 'open' THEN 1 END) as opens,
-               COUNT(CASE WHEN e.type = 'click' THEN 1 END) as clicks
+               COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
+               COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e
         INNER JOIN "Email" em ON e."emailId" = em.id
         WHERE em."domainId" = $1
@@ -136,26 +136,26 @@ export async function GET(request: NextRequest) {
       ? await prisma.$queryRawUnsafe(`
         SELECT EXTRACT(DOW FROM e."occurredAt") as day_of_week,
                TO_CHAR(e."occurredAt", 'Day') as day_name,
-               COUNT(CASE WHEN e.type = 'open' THEN 1 END) as opens,
-               COUNT(CASE WHEN e.type = 'click' THEN 1 END) as clicks
+               COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
+               COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e
         INNER JOIN "Email" em ON e."emailId" = em.id
         WHERE em."domainId" = ANY($1)
           AND e."occurredAt" >= $2
-          AND e.type IN ('open','click')
+          AND e.type IN ('email.loaded','email.link.clicked')
         GROUP BY EXTRACT(DOW FROM e."occurredAt"), TO_CHAR(e."occurredAt", 'Day')
         ORDER BY EXTRACT(DOW FROM e."occurredAt")
       `, domainIds, thirtyDaysAgo)
       : await prisma.$queryRawUnsafe(`
         SELECT EXTRACT(DOW FROM e."occurredAt") as day_of_week,
                TO_CHAR(e."occurredAt", 'Day') as day_name,
-               COUNT(CASE WHEN e.type = 'open' THEN 1 END) as opens,
-               COUNT(CASE WHEN e.type = 'click' THEN 1 END) as clicks
+               COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
+               COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e
         INNER JOIN "Email" em ON e."emailId" = em.id
         WHERE em."domainId" = $1
           AND e."occurredAt" >= $2
-          AND e.type IN ('open','click')
+          AND e.type IN ('email.loaded','email.link.clicked')
         GROUP BY EXTRACT(DOW FROM e."occurredAt"), TO_CHAR(e."occurredAt", 'Day')
         ORDER BY EXTRACT(DOW FROM e."occurredAt")
       `, domains[0].id, thirtyDaysAgo);

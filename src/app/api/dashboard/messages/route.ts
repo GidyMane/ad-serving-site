@@ -18,6 +18,43 @@ function safeJsonResponse<T>(data: T): NextResponse {
   );
 }
 
+// Extract status from event type (e.g., "email.delivery.held" -> "held")
+function extractStatusFromEventType(eventType: string): string {
+  if (!eventType) return 'unknown';
+  
+  const parts = eventType.split('.');
+  if (parts.length >= 3 && parts[0] === 'email' && parts[1] === 'delivery') {
+    return parts[2]; // "held", "sent", "failed", etc.
+  }
+  
+  // Handle other event types
+  if (eventType.includes('failed') || eventType.includes('fail')) return 'failed';
+  if (eventType.includes('bounce')) return 'bounced';
+  if (eventType.includes('sent') || eventType.includes('delivered')) return 'delivered';
+  if (eventType.includes('held')) return 'held';
+  if (eventType.includes('delayed')) return 'delayed';
+  if (eventType.includes('rejected')) return 'rejected';
+  
+  return eventType.split('.').pop() || 'unknown';
+}
+
+// Get user-friendly status label
+function getStatusLabel(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'sent': 'Sent',
+    'delivered': 'Delivered',
+    'failed': 'Failed',
+    'bounced': 'Bounced',
+    'held': 'Held',
+    'delayed': 'Delayed',
+    'rejected': 'Rejected',
+    'queued': 'Queued',
+    'unknown': 'Unknown'
+  };
+  
+  return statusMap[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { getUser } = getKindeServerSession();
@@ -56,11 +93,12 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
-    const status = url.searchParams.get("status") || "all";
+    const statusParam = url.searchParams.get("status") || "all";
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const page = parseInt(url.searchParams.get("page") || "1");
+    const limit = parseInt(url.searchParams.get("limit") || "20");
+    const offset = (page - 1) * limit;
 
     // Build date filter
     const dateFilter: { gte?: Date; lte?: Date } = {};
@@ -81,17 +119,13 @@ export async function GET(request: NextRequest) {
       ]
     } : {};
 
-    // Build status filter
-    const statusFilter = status !== "all" ? { deliveryStatus: status } : {};
-
     const whereClause = {
       ...domainFilter,
       sentAt: Object.keys(dateFilter).length > 0 ? dateFilter : undefined,
       ...searchFilter,
-      ...statusFilter,
     };
 
-    // Fetch emails with their latest event status
+    // Fetch all emails with their events
     const emails = await prisma.email.findMany({
       where: whereClause,
       include: {
@@ -100,53 +134,86 @@ export async function GET(request: NextRequest) {
         },
         events: {
           orderBy: { occurredAt: 'desc' },
-          take: 1,
           select: {
             type: true,
             status: true,
             occurredAt: true,
             country: true,
-            city: true
+            city: true,
+            userAgent: true,
+            ipAddress: true
           }
         }
       },
-      orderBy: { sentAt: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy: { createdAt: 'desc' },
     });
 
-    const totalCount = await prisma.email.count({ where: whereClause });
+    // Process emails and extract latest delivery status
+    let processedEmails = emails.map(email => {
+      // Find the latest delivery event
+      const deliveryEvent = email.events.find(event => 
+        event.type.startsWith('email.delivery.') || 
+        event.type.includes('sent') || 
+        event.type.includes('delivered') ||
+        event.type.includes('failed') ||
+        event.type.includes('bounced')
+      );
 
-    // Format the response with user-friendly data
-    const formattedEmails = emails.map(email => {
       const latestEvent = email.events[0];
-      
+      const currentStatus = deliveryEvent ? extractStatusFromEventType(deliveryEvent.type) : 'unknown';
+
+      // Count different event types for analytics
+      const eventCounts = {
+        opens: email.events.filter(e => e.type === 'email.loaded').length,
+        clicks: email.events.filter(e => e.type === 'email.link.clicked').length,
+        totalEvents: email.events.length
+      };
+
       return {
+        id: email.id,
+        emailId: email.emailId,
         messageId: email.messageId,
         recipient: email.to || 'Unknown Recipient',
         sender: email.from || 'Unknown Sender',
         subject: email.subject || 'No Subject',
         domainName: email.domain.name,
-        deliveryStatus: email.deliveryStatus || latestEvent?.status || 'Unknown',
-        sentDate: email.sentAt,
+        currentStatus: currentStatus,
+        statusLabel: getStatusLabel(currentStatus),
+        sentDate: email.sentAt || email.createdAt,
         firstOpenDate: email.firstOpenAt,
         firstClickDate: email.firstClickAt,
-        spamScore: email.spamStatus,
         lastEventType: latestEvent?.type,
         lastEventDate: latestEvent?.occurredAt,
         location: latestEvent?.country && latestEvent?.city 
           ? `${latestEvent.city}, ${latestEvent.country}` 
-          : latestEvent?.country || 'Unknown'
+          : latestEvent?.country || null,
+        userAgent: latestEvent?.userAgent,
+        ipAddress: latestEvent?.ipAddress,
+        analytics: eventCounts,
+        createdAt: email.createdAt
       };
     });
 
+    // Apply status filter after processing
+    if (statusParam !== "all") {
+      processedEmails = processedEmails.filter(email => 
+        email.currentStatus.toLowerCase() === statusParam.toLowerCase()
+      );
+    }
+
+    // Apply pagination
+    const totalCount = processedEmails.length;
+    const paginatedEmails = processedEmails.slice(offset, offset + limit);
+
     return safeJsonResponse({
-      messages: formattedEmails,
+      messages: paginatedEmails,
       pagination: {
         total: totalCount,
-        limit,
-        offset,
+        page: page,
+        limit: limit,
+        totalPages: Math.ceil(totalCount / limit),
         hasMore: totalCount > offset + limit,
+        hasPrevious: page > 1
       },
       domainName: isAdmin ? "All Domains" : domains[0].name,
       isAdmin,

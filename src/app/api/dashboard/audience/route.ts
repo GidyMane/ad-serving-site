@@ -159,8 +159,8 @@ export async function GET(request: NextRequest) {
 
     // Format the final recipient data
     const formattedRecipients = recipients.map(recipient => {
-      const engagement = (engagementData as any[]).find(
-        (e: any) => e.recipient_email === recipient.to
+      const engagement = engagementData.find(
+        (e: EngagementData) => e.recipient_email === recipient.to
       );
 
       // Convert BigInt values to Numbers to avoid BigInt math errors

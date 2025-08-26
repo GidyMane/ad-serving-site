@@ -318,7 +318,7 @@ export default function EnhancedAnalyticsDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.deliveryRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.deliveryRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.delivered?.toLocaleString() || 0} delivered
             </p>
@@ -331,7 +331,7 @@ export default function EnhancedAnalyticsDashboard() {
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.openRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.openRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.opens?.toLocaleString() || 0} opens
             </p>
@@ -344,7 +344,7 @@ export default function EnhancedAnalyticsDashboard() {
             <MousePointer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.clickRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.clickRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.clicks?.toLocaleString() || 0} clicks
             </p>

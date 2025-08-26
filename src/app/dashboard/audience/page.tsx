@@ -103,6 +103,70 @@ export default function AudiencePage() {
     }
   }
 
+  const exportAudience = async () => {
+    try {
+      // Fetch all recipients for export (without pagination)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      params.append('limit', '10000') // Large limit to get all results
+
+      const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch data for export')
+      }
+      const data = await response.json()
+
+      // Create CSV content
+      const csvHeaders = [
+        'Email Address',
+        'Email Domain',
+        'Total Emails',
+        'Delivered Emails',
+        'Failed Emails',
+        'Total Opens',
+        'Total Clicks',
+        'Open Rate (%)',
+        'Click Rate (%)',
+        'First Email Sent',
+        'Latest Activity'
+      ]
+
+      const csvRows = data.recipients.map((recipient: Recipient) => [
+        recipient.email,
+        recipient.emailDomain,
+        recipient.totalEmails,
+        recipient.deliveredEmails,
+        recipient.failedEmails,
+        recipient.totalOpens,
+        recipient.totalClicks,
+        recipient.openRate,
+        recipient.clickRate,
+        new Date(recipient.firstEmailSent).toLocaleDateString(),
+        new Date(recipient.lastActivity).toLocaleDateString()
+      ])
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `audience-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (err) {
+      console.error('Error exporting audience data:', err)
+      setError('Failed to export audience data')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)

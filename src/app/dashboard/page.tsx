@@ -305,8 +305,8 @@ export default function DashboardOverview() {
       title: "Platform Engagement",
       description: "Overall open and click rates",
       icon: Activity,
-      value: `${((stats.openRate + stats.clickRate) / 2).toFixed(1)}%`,
-      subtitle: `${stats.openRate.toFixed(1)}% opens, ${stats.clickRate.toFixed(1)}% clicks`,
+      value: `${Math.min(100, ((Math.min(100, stats.openRate) + Math.min(100, stats.clickRate)) / 2)).toFixed(1)}%`,
+      subtitle: `${Math.min(100, stats.openRate).toFixed(1)}% opens, ${Math.min(100, stats.clickRate).toFixed(1)}% clicks`,
       color: "text-purple-600",
       bgColor: "bg-purple-50"
     },

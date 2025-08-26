@@ -180,12 +180,12 @@ export async function GET(request: NextRequest) {
       totalEmailsSent: formattedRecipients.reduce((sum, r) => sum + r.totalEmails, 0),
       totalOpens: formattedRecipients.reduce((sum, r) => sum + r.totalOpens, 0),
       totalClicks: formattedRecipients.reduce((sum, r) => sum + r.totalClicks, 0),
-      averageOpenRate: Math.round(
-        formattedRecipients.reduce((sum, r) => sum + r.openRate, 0) / formattedRecipients.length || 0
-      ),
-      averageClickRate: Math.round(
-        formattedRecipients.reduce((sum, r) => sum + r.clickRate, 0) / formattedRecipients.length || 0
-      )
+      averageOpenRate: formattedRecipients.length > 0 ? Math.round(
+        formattedRecipients.reduce((sum, r) => sum + r.openRate, 0) / formattedRecipients.length
+      ) : 0,
+      averageClickRate: formattedRecipients.length > 0 ? Math.round(
+        formattedRecipients.reduce((sum, r) => sum + r.clickRate, 0) / formattedRecipients.length
+      ) : 0
     };
 
     return safeJsonResponse({

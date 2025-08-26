@@ -766,15 +766,15 @@ export default function EnhancedAnalyticsDashboard() {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Delivery Rate:</span>
-                  <span className="font-medium">{statsData?.deliveryRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.deliveryRate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Open Rate:</span>
-                  <span className="font-medium">{statsData?.openRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.openRate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Click Rate:</span>
-                  <span className="font-medium">{statsData?.clickRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.clickRate || 0).toFixed(1)}%</span>
                 </div>
               </CardContent>
             </Card>

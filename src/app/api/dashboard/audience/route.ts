@@ -104,23 +104,47 @@ export async function GET(request: NextRequest) {
 
     // Get engagement data for each recipient
     const recipientEmails = recipients.map(r => r.to).filter(Boolean);
-    
-    const engagementData = await prisma.$queryRaw`
-      SELECT 
-        em."to" as recipient_email,
-        COUNT(DISTINCT em."id") as total_emails,
-        COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN e."id" END) as total_opens,
-        COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN e."id" END) as total_clicks,
-        COUNT(DISTINCT CASE WHEN e."status" = 'delivered' THEN em."id" END) as delivered_emails,
-        COUNT(DISTINCT CASE WHEN e."status" IN ('failed', 'bounced') THEN em."id" END) as failed_emails,
-        MAX(e."occurredAt") as last_activity,
-        MIN(em."sentAt") as first_email_sent
-      FROM "Email" em
-      LEFT JOIN "EmailEvent" e ON e."emailId" = em."id"
-      WHERE em."to" = ANY(${recipientEmails})
-        AND em."domainId" ${isAdmin ? '= ANY($2)' : '= $2'}
-      GROUP BY em."to"
-    ` as any[];
+
+    const domainIds = domains.map(d => d.id);
+
+    let engagementData: any[] = [];
+    if (recipientEmails.length > 0) {
+      if (isAdmin) {
+        engagementData = await prisma.$queryRawUnsafe(`
+          SELECT
+            em."to" as recipient_email,
+            COUNT(DISTINCT em."id") as total_emails,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN e."id" END) as total_opens,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN e."id" END) as total_clicks,
+            COUNT(DISTINCT CASE WHEN e."status" = 'delivered' THEN em."id" END) as delivered_emails,
+            COUNT(DISTINCT CASE WHEN e."status" IN ('failed', 'bounced') THEN em."id" END) as failed_emails,
+            MAX(e."occurredAt") as last_activity,
+            MIN(em."sentAt") as first_email_sent
+          FROM "Email" em
+          LEFT JOIN "EmailEvent" e ON e."emailId" = em."id"
+          WHERE em."to" = ANY($1)
+            AND em."domainId" = ANY($2)
+          GROUP BY em."to"
+        `, recipientEmails, domainIds);
+      } else {
+        engagementData = await prisma.$queryRawUnsafe(`
+          SELECT
+            em."to" as recipient_email,
+            COUNT(DISTINCT em."id") as total_emails,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN e."id" END) as total_opens,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN e."id" END) as total_clicks,
+            COUNT(DISTINCT CASE WHEN e."status" = 'delivered' THEN em."id" END) as delivered_emails,
+            COUNT(DISTINCT CASE WHEN e."status" IN ('failed', 'bounced') THEN em."id" END) as failed_emails,
+            MAX(e."occurredAt") as last_activity,
+            MIN(em."sentAt") as first_email_sent
+          FROM "Email" em
+          LEFT JOIN "EmailEvent" e ON e."emailId" = em."id"
+          WHERE em."to" = ANY($1)
+            AND em."domainId" = $2
+          GROUP BY em."to"
+        `, recipientEmails, domains[0].id);
+      }
+    }
 
     // Format the final recipient data
     const formattedRecipients = recipients.map(recipient => {

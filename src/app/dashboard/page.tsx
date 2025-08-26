@@ -296,7 +296,7 @@ export default function DashboardOverview() {
       title: "Platform Delivery",
       description: "Overall delivery performance",
       icon: Shield,
-      value: `${stats.deliveryRate.toFixed(1)}%`,
+      value: `${Math.min(100, stats.deliveryRate).toFixed(1)}%`,
       subtitle: `${stats.delivered.toLocaleString()} delivered successfully`,
       color: stats.deliveryRate >= 95 ? "text-green-600" : stats.deliveryRate >= 85 ? "text-yellow-600" : "text-red-600",
       bgColor: stats.deliveryRate >= 95 ? "bg-green-50" : stats.deliveryRate >= 85 ? "bg-yellow-50" : "bg-red-50"

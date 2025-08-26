@@ -119,8 +119,6 @@ export async function GET(request: NextRequest) {
             type: true,
             status: true,
             occurredAt: true,
-            country: true,
-            city: true,
             userAgent: true,
             ipAddress: true
           }

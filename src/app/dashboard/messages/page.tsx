@@ -363,7 +363,7 @@ export default function MessagesPage() {
                         )}
                         {message.firstClickDate && (
                           <div className="flex items-center gap-1">
-                            <Mouse className="h-3 w-3" />
+                            <MousePointer className="h-3 w-3" />
                             <span>Clicked: {formatDate(message.firstClickDate)}</span>
                           </div>
                         )}

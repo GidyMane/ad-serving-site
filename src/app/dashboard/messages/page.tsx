@@ -4,9 +4,18 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import {
   Mail,
-  Eye,
   Search,
-  Filter
+  Filter,
+  Download,
+  Calendar,
+  MapPin,
+  Clock,
+  User,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Minus
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,17 +24,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
-interface EmailEventData {
-  id: string;
-  emailId: number;
+interface EmailMessage {
   messageId: string;
-  to: string;
-  from: string;
+  recipient: string;
+  sender: string;
   subject: string;
-  eventType: string;
-  status: string;
-  timestamp: string;
-  createdAt: string;
+  domainName: string;
+  deliveryStatus: string;
+  sentDate: string;
+  firstOpenDate?: string;
+  firstClickDate?: string;
+  spamScore?: number;
+  lastEventType?: string;
+  lastEventDate?: string;
+  location?: string;
 }
 
 interface PaginationData {
@@ -35,101 +47,85 @@ interface PaginationData {
   hasMore: boolean;
 }
 
-interface EventsData {
-  events: EmailEventData[];
+interface MessagesData {
+  messages: EmailMessage[];
   pagination: PaginationData;
   domainName: string;
-}
-
-interface DomainData {
-  userDomain: string;
+  isAdmin: boolean;
 }
 
 export default function MessagesPage() {
-  const [eventsData, setEventsData] = useState<EventsData | null>(null)
-  const [domainData, setDomainData] = useState<DomainData | null>(null)
+  const [messagesData, setMessagesData] = useState<MessagesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [dateRange, setDateRange] = useState("30")
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+    fetchMessages()
+  }, [searchTerm, statusFilter, dateRange])
 
-        // Fetch domain data
-        const domainResponse = await fetch('/api/dashboard/domain')
-        if (domainResponse.ok) {
-          const domainResult = await domainResponse.json()
-          setDomainData(domainResult)
-        }
+  const fetchMessages = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-        // Fetch events data
-        const eventsResponse = await fetch('/api/dashboard/events')
-        if (!eventsResponse.ok) {
-          throw new Error('Failed to fetch messages data')
-        }
-        const eventsResult = await eventsResponse.json()
-        setEventsData(eventsResult)
-
-      } catch (err) {
-        console.error('Error fetching messages data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load messages data')
-      } finally {
-        setLoading(false)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      
+      // Set date range
+      if (dateRange !== 'all') {
+        const days = parseInt(dateRange)
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+        params.append('startDate', startDate.toISOString())
       }
-    }
 
-    fetchData()
-  }, [])
-
-  // Filter messages based on search term and status
-  const filteredMessages = React.useMemo(() => {
-    if (!eventsData?.events) return []
-    
-    // Group messages by messageId to show unique emails
-    const groupedMessages = eventsData.events.reduce((acc: { [key: string]: EmailEventData }, event: EmailEventData) => {
-      // Only include delivery events for messages view
-      if (event.eventType.startsWith('email.delivery.')) {
-        if (!acc[event.messageId] || new Date(event.timestamp) > new Date(acc[event.messageId].timestamp)) {
-          acc[event.messageId] = event;
-        }
+      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages')
       }
-      return acc;
-    }, {})
+      const result = await response.json()
+      setMessagesData(result)
 
-    let messages = Object.values(groupedMessages)
-
-    // Filter by search term
-    if (searchTerm) {
-      messages = messages.filter(message => 
-        message.to.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        message.from.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    } catch (err) {
+      console.error('Error fetching messages:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load messages')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    // Filter by status
-    if (statusFilter !== "all") {
-      messages = messages.filter(message => message.status === statusFilter)
+  const getStatusIcon = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+      case 'sent':
+        return <CheckCircle className="h-3 w-3" />
+      case 'failed':
+      case 'bounced':
+      case 'rejected':
+        return <XCircle className="h-3 w-3" />
+      case 'pending':
+      case 'queued':
+        return <Clock className="h-3 w-3" />
+      default:
+        return <Minus className="h-3 w-3" />
     }
-
-    return messages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [eventsData?.events, searchTerm, statusFilter])
+  }
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
       case 'sent':
         return 'default'
-      case 'hardfail':
-      case 'softfail':
-      case 'bounce':
-      case 'error':
+      case 'failed':
+      case 'bounced':
+      case 'rejected':
         return 'destructive'
-      case 'held':
-      case 'delayed':
+      case 'pending':
+      case 'queued':
         return 'secondary'
       default:
         return 'outline'
@@ -137,57 +133,50 @@ export default function MessagesPage() {
   }
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return 'Delivered'
-      case 'hardfail':
-        return 'Hard Fail'
-      case 'softfail':
-        return 'Soft Fail'
-      case 'bounce':
-        return 'Bounced'
-      case 'error':
-        return 'Error'
-      case 'held':
-        return 'Held'
-      case 'delayed':
-        return 'Delayed'
-      default:
-        return status
-    }
+    if (!status) return 'Unknown'
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getSpamScoreColor = (score?: number) => {
+    if (!score) return 'text-muted-foreground'
+    if (score < 3) return 'text-green-600'
+    if (score < 7) return 'text-yellow-600'
+    return 'text-red-600'
   }
 
   const TableSkeleton = () => (
-    <div className="rounded-lg border">
-      <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-muted-foreground border-b bg-muted/50">
-        <div className="col-span-3">To</div>
-        <div className="col-span-4">Subject</div>
-        <div className="col-span-2">Status</div>
-        <div className="col-span-2">Sent Date</div>
-        <div className="col-span-1">Actions</div>
-      </div>
+    <div className="space-y-4">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="grid grid-cols-12 gap-4 p-4 border-b last:border-b-0">
-          <div className="col-span-3 flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-lg" />
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
+        <div key={i} className="border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-4 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-3 w-2/3" />
             </div>
-          </div>
-          <div className="col-span-4 space-y-1">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <div className="col-span-2">
-            <Skeleton className="h-6 w-20 rounded-full" />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <div className="col-span-1">
-            <Skeleton className="h-8 w-8 rounded" />
+            <div className="md:col-span-3 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <div className="md:col-span-2">
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+            <div className="md:col-span-3 space-y-2">
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
           </div>
         </div>
       ))}
@@ -202,8 +191,9 @@ export default function MessagesPage() {
           <Skeleton className="h-4 w-72" />
         </div>
         
-        <div className="flex gap-4">
-          <Skeleton className="h-10 w-64" />
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-32" />
           <Skeleton className="h-10 w-32" />
         </div>
 
@@ -224,17 +214,14 @@ export default function MessagesPage() {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="text-center space-y-4 py-12">
-          <Mail className="h-16 w-16 text-red-500 mx-auto" />
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Failed to Load Messages</h2>
             <p className="text-muted-foreground max-w-md mx-auto">{error}</p>
           </div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
+          <Button onClick={fetchMessages}>
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -246,167 +233,195 @@ export default function MessagesPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Messages</h1>
         <p className="text-muted-foreground">
-          All messages sent through {domainData?.userDomain || 'your domain'}
+          All email messages sent through {messagesData?.domainName || 'your domain'}
         </p>
       </div>
 
-      {/* Search and Filter */}
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Search messages by recipient, subject, or sender..." 
-            className="pl-8"
+            placeholder="Search by recipient, sender, or subject..." 
+            className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-border rounded-md bg-background"
-          >
-            <option value="all">All Status</option>
-            <option value="sent">Delivered</option>
-            <option value="hardfail">Hard Fail</option>
-            <option value="softfail">Soft Fail</option>
-            <option value="bounce">Bounced</option>
-            <option value="error">Error</option>
-            <option value="held">Held</option>
-            <option value="delayed">Delayed</option>
-          </select>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
+        
+        <select 
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+        >
+          <option value="all">All Status</option>
+          <option value="delivered">Delivered</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+          <option value="bounced">Bounced</option>
+          <option value="pending">Pending</option>
+          <option value="queued">Queued</option>
+        </select>
+
+        <select 
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value)}
+          className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+        >
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="all">All time</option>
+        </select>
       </div>
 
-      {/* Messages Table */}
+      {/* Messages List */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Messages</CardTitle>
-          <CardDescription>
-            {filteredMessages.length > 0 
-              ? `Showing ${filteredMessages.length} message${filteredMessages.length !== 1 ? 's' : ''}`
-              : 'No messages found'
-            }
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent Messages</CardTitle>
+            <CardDescription>
+              {messagesData?.messages.length ? (
+                `Showing ${messagesData.messages.length} of ${messagesData.pagination.total.toLocaleString()} messages`
+              ) : (
+                'No messages found'
+              )}
+            </CardDescription>
+          </div>
+          {messagesData?.messages.length ? (
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredMessages.length > 0 ? (
-              <>
-                {/* Messages Table */}
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[800px] grid grid-cols-12 gap-4 p-3 sm:p-4 font-medium text-xs sm:text-sm text-muted-foreground border-b bg-muted/50">
-                      <div className="col-span-3">To</div>
-                      <div className="col-span-4">Subject</div>
-                      <div className="col-span-2">Status</div>
-                      <div className="col-span-2">Sent Date</div>
-                      <div className="col-span-1">Actions</div>
-                    </div>
-                    {filteredMessages.slice(0, 50).map((message: EmailEventData) => (
-                      <div key={message.messageId} className="min-w-[800px] grid grid-cols-12 gap-4 p-3 sm:p-4 border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                        <div className="col-span-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex aspect-square size-6 sm:size-8 items-center justify-center rounded-lg bg-blue-100 flex-shrink-0">
-                              <Mail className="size-3 sm:size-4 text-blue-600" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-xs sm:text-sm truncate" title={message.to}>{message.to}</div>
-                              <div className="text-[10px] sm:text-xs text-muted-foreground truncate" title={message.from}>{message.from}</div>
-                            </div>
+          {messagesData?.messages.length ? (
+            <div className="space-y-4">
+              {messagesData.messages.map((message) => (
+                <div key={message.messageId} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    {/* Email Details */}
+                    <div className="md:col-span-4">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Mail className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate" title={message.recipient}>
+                              <User className="h-3 w-3 inline mr-1" />
+                              {message.recipient}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate" title={message.sender}>
+                              From: {message.sender}
+                            </p>
                           </div>
                         </div>
-                        <div className="col-span-4">
-                          <div className="text-xs sm:text-sm font-medium truncate" title={message.subject}>
-                            {message.subject}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground">ID: {message.emailId}</div>
-                        </div>
-                        <div className="col-span-2">
-                          <Badge variant={getStatusVariant(message.status)}>
-                            {getStatusLabel(message.status)}
-                          </Badge>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="text-xs sm:text-sm">
-                            {new Date(message.timestamp).toLocaleDateString()}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground">
-                            {new Date(message.timestamp).toLocaleTimeString()}
-                          </div>
-                        </div>
-                        <div className="col-span-1">
-                          <Button variant="ghost" size="sm" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
-                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </Button>
+                        <div className="pl-6">
+                          <p className="text-xs text-muted-foreground">
+                            <FileText className="h-3 w-3 inline mr-1" />
+                            Domain: {message.domainName}
+                          </p>
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Subject */}
+                    <div className="md:col-span-3">
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm truncate" title={message.subject}>
+                          {message.subject}
+                        </p>
+                        {message.spamScore !== undefined && (
+                          <p className={`text-xs ${getSpamScoreColor(message.spamScore)}`}>
+                            Spam Score: {message.spamScore}/10
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="md:col-span-2">
+                      <Badge variant={getStatusVariant(message.deliveryStatus)} className="text-xs">
+                        {getStatusIcon(message.deliveryStatus)}
+                        <span className="ml-1">{getStatusLabel(message.deliveryStatus)}</span>
+                      </Badge>
+                    </div>
+
+                    {/* Dates and Analytics */}
+                    <div className="md:col-span-3">
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Sent: {formatDate(message.sentDate)}</span>
+                        </div>
+                        {message.firstOpenDate && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>Opened: {formatDate(message.firstOpenDate)}</span>
+                          </div>
+                        )}
+                        {message.firstClickDate && (
+                          <div className="flex items-center gap-1">
+                            <Mouse className="h-3 w-3" />
+                            <span>Clicked: {formatDate(message.firstClickDate)}</span>
+                          </div>
+                        )}
+                        {message.location && message.location !== 'Unknown' && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{message.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              ))}
 
-                {/* Pagination Info */}
-                {filteredMessages.length > 50 && (
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div>
-                      Showing 50 of {filteredMessages.length} messages
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Load More Messages
-                    </Button>
-                  </div>
-                )}
-
-                {eventsData?.pagination && (
-                  <div className="flex items-center justify-between text-sm text-muted-foreground pt-4 border-t">
-                    <div>
-                      Total messages from {domainData?.userDomain || 'your domain'}: {eventsData.pagination.total.toLocaleString()}
-                    </div>
-                    {eventsData.pagination.hasMore && (
-                      <Button variant="outline" size="sm">
-                        Load More Data
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">
-                  {searchTerm || statusFilter !== "all" ? "No Messages Found" : "No Messages Yet"}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {searchTerm || statusFilter !== "all" 
-                    ? "Try adjusting your search criteria or filters"
-                    : "Messages will appear here once you start sending emails"
-                  }
-                </p>
-                {(searchTerm || statusFilter !== "all") && (
-                  <div className="mt-4 space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSearchTerm("")}
-                    >
-                      Clear Search
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setStatusFilter("all")}
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              {/* Load More */}
+              {messagesData.pagination.hasMore && (
+                <div className="flex justify-center pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // TODO: Implement load more functionality
+                      console.log('Load more messages')
+                    }}
+                  >
+                    Load More Messages
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">
+                {searchTerm || statusFilter !== "all" ? "No Messages Found" : "No Messages Yet"}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                {searchTerm || statusFilter !== "all" 
+                  ? "Try adjusting your search terms or filters to find the messages you're looking for"
+                  : "Messages will appear here once you start sending emails through your domain"
+                }
+              </p>
+              {(searchTerm || statusFilter !== "all" || dateRange !== "30") && (
+                <div className="mt-4 space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("")
+                      setStatusFilter("all")
+                      setDateRange("30")
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

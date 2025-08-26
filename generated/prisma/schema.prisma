@@ -77,6 +77,10 @@ model EmailEvent {
   rawPayload Json
 
   createdAt DateTime @default(now())
+
+  @@index([emailId, type])
+  @@index([type, occurredAt])
+  @@index([emailId, occurredAt])
 }
 
 model EmailSummary {

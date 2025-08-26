@@ -619,7 +619,7 @@ export default function EnhancedAnalyticsDashboard() {
                     opens: { label: "Opens", color: ENGAGEMENT_COLORS.opened },
                     clicks: { label: "Clicks", color: ENGAGEMENT_COLORS.clicked }
                   }}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-96"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={eventsData.charts.engagement} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

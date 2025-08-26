@@ -175,7 +175,7 @@ export default function MessagesPage() {
 
       const csvContent = [
         csvHeaders.join(','),
-        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ...csvRows.map((row: (string | number)[]) => row.map((cell: string | number) => `"${cell}"`).join(','))
       ].join('\n')
 
       // Download CSV file

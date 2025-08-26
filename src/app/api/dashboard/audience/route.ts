@@ -7,6 +7,17 @@ interface Domain {
   name: string;
 }
 
+interface EngagementData {
+  recipient_email: string;
+  total_emails: number | bigint;
+  total_opens: number | bigint;
+  total_clicks: number | bigint;
+  delivered_emails: number | bigint;
+  failed_emails: number | bigint;
+  last_activity: Date | null;
+  first_email_sent: Date | null;
+}
+
 // Helper to safely serialize BigInts
 function safeJsonResponse<T>(data: T): NextResponse {
   return NextResponse.json(

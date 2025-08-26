@@ -407,7 +407,7 @@ export default function AudiencePage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={exportAudience}>
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>

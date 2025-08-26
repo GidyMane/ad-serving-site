@@ -96,7 +96,7 @@ export default function MessagesPage() {
       if (statusFilter !== 'all') params.append('status', statusFilter)
       params.append('page', currentPage.toString())
       params.append('limit', '20')
-      
+
       // Set date range
       if (dateRange !== 'all') {
         const days = parseInt(dateRange)
@@ -117,6 +117,81 @@ export default function MessagesPage() {
       setError(err instanceof Error ? err.message : 'Failed to load messages')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const exportMessages = async () => {
+    try {
+      // Fetch all messages for export (without pagination)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      params.append('limit', '10000') // Large limit to get all results
+
+      // Set date range
+      if (dateRange !== 'all') {
+        const days = parseInt(dateRange)
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+        params.append('startDate', startDate.toISOString())
+      }
+
+      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch data for export')
+      }
+      const data = await response.json()
+
+      // Create CSV content
+      const csvHeaders = [
+        'Message ID',
+        'Recipient',
+        'Sender',
+        'Subject',
+        'Domain',
+        'Status',
+        'Sent Date',
+        'First Open Date',
+        'First Click Date',
+        'Total Opens',
+        'Total Clicks',
+        'Total Events'
+      ]
+
+      const csvRows = data.messages.map((message: EmailMessage) => [
+        message.messageId,
+        message.recipient,
+        message.sender,
+        message.subject,
+        message.domainName,
+        message.statusLabel,
+        new Date(message.sentDate).toLocaleDateString(),
+        message.firstOpenDate ? new Date(message.firstOpenDate).toLocaleDateString() : 'N/A',
+        message.firstClickDate ? new Date(message.firstClickDate).toLocaleDateString() : 'N/A',
+        message.analytics.opens,
+        message.analytics.clicks,
+        message.analytics.totalEvents
+      ])
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `messages-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (err) {
+      console.error('Error exporting messages data:', err)
+      setError('Failed to export messages data')
     }
   }
 

@@ -18,25 +18,6 @@ function safeJsonResponse<T>(data: T): NextResponse {
   );
 }
 
-// Extract status from event type (e.g., "email.delivery.held" -> "held")
-function extractStatusFromEventType(eventType: string): string {
-  if (!eventType) return 'unknown';
-  
-  const parts = eventType.split('.');
-  if (parts.length >= 3 && parts[0] === 'email' && parts[1] === 'delivery') {
-    return parts[2]; // "held", "sent", "failed", etc.
-  }
-  
-  // Handle other event types
-  if (eventType.includes('failed') || eventType.includes('fail')) return 'failed';
-  if (eventType.includes('bounce')) return 'bounced';
-  if (eventType.includes('sent') || eventType.includes('delivered')) return 'delivered';
-  if (eventType.includes('held')) return 'held';
-  if (eventType.includes('delayed')) return 'delayed';
-  if (eventType.includes('rejected')) return 'rejected';
-  
-  return eventType.split('.').pop() || 'unknown';
-}
 
 // Get user-friendly status label
 function getStatusLabel(status: string): string {

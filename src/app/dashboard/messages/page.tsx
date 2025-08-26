@@ -15,7 +15,8 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Minus
+  Minus,
+  MousePointer
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

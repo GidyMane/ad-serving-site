@@ -152,11 +152,12 @@ export async function GET(request: NextRequest) {
         (e: any) => e.recipient_email === recipient.to
       );
 
-      const totalEmails = engagement?.total_emails || recipient._count.id;
-      const totalOpens = parseInt(engagement?.total_opens) || 0;
-      const totalClicks = parseInt(engagement?.total_clicks) || 0;
-      const deliveredEmails = parseInt(engagement?.delivered_emails) || 0;
-      const failedEmails = parseInt(engagement?.failed_emails) || 0;
+      // Convert BigInt values to Numbers to avoid BigInt math errors
+      const totalEmails = Number(engagement?.total_emails || recipient._count.id || 0);
+      const totalOpens = Number(engagement?.total_opens || 0);
+      const totalClicks = Number(engagement?.total_clicks || 0);
+      const deliveredEmails = Number(engagement?.delivered_emails || 0);
+      const failedEmails = Number(engagement?.failed_emails || 0);
 
       return {
         email: recipient.to,

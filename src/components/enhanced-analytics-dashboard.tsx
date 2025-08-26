@@ -684,11 +684,17 @@ export default function EnhancedAnalyticsDashboard() {
                         { name: 'Held', value: statsData.detailedStatus.held, color: STATUS_COLORS.held },
                         { name: 'Delayed', value: statsData.detailedStatus.delayed, color: STATUS_COLORS.delayed }
                       ]}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 20, right: 30, left: 20, bottom: chartSettings.axisHeight + 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                      <YAxis />
+                      <XAxis
+                        dataKey="name"
+                        angle={chartSettings.axisAngle}
+                        textAnchor="end"
+                        height={chartSettings.axisHeight}
+                        tick={{ fontSize: chartSettings.tickFontSize }}
+                      />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {[

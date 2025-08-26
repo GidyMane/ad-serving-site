@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     const domainIds = domains.map(d => d.id);
 
-    let engagementData: any[] = [];
+    let engagementData: EngagementData[] = [];
     if (recipientEmails.length > 0) {
       if (isAdmin) {
         engagementData = await prisma.$queryRawUnsafe(`
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
           WHERE em."to" = ANY($1)
             AND em."domainId" = ANY($2)
           GROUP BY em."to"
-        `, recipientEmails, domainIds);
+        `, recipientEmails, domainIds) as EngagementData[];
       } else {
         engagementData = await prisma.$queryRawUnsafe(`
           SELECT
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
           WHERE em."to" = ANY($1)
             AND em."domainId" = $2
           GROUP BY em."to"
-        `, recipientEmails, domains[0].id);
+        `, recipientEmails, domains[0].id) as EngagementData[];
       }
     }
 

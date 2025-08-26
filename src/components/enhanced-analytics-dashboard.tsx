@@ -347,7 +347,7 @@ export default function EnhancedAnalyticsDashboard() {
 
       {/* Charts Section */}
       <Tabs defaultValue="delivery" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
           <TabsTrigger value="delivery">Delivery Status</TabsTrigger>
           <TabsTrigger value="engagement">Engagement</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>

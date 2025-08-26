@@ -5,7 +5,6 @@ import { useState, useEffect } from "react"
 import {
   Mail,
   Search,
-  Filter,
   Download,
   Calendar,
   MapPin,
@@ -16,7 +15,12 @@ import {
   CheckCircle,
   XCircle,
   Minus,
-  MousePointer
+  MousePointer,
+  Eye,
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,26 +30,38 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface EmailMessage {
+  id: string;
+  emailId: number;
   messageId: string;
   recipient: string;
   sender: string;
   subject: string;
   domainName: string;
-  deliveryStatus: string;
+  currentStatus: string;
+  statusLabel: string;
   sentDate: string;
   firstOpenDate?: string;
   firstClickDate?: string;
-  spamScore?: number;
   lastEventType?: string;
   lastEventDate?: string;
   location?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  analytics: {
+    opens: number;
+    clicks: number;
+    totalEvents: number;
+  };
+  createdAt: string;
 }
 
 interface PaginationData {
   total: number;
+  page: number;
   limit: number;
-  offset: number;
+  totalPages: number;
   hasMore: boolean;
+  hasPrevious: boolean;
 }
 
 interface MessagesData {
@@ -62,10 +78,15 @@ export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateRange, setDateRange] = useState("30")
+  const [currentPage, setCurrentPage] = useState(1)
+
+  useEffect(() => {
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [searchTerm, statusFilter, dateRange])
 
   useEffect(() => {
     fetchMessages()
-  }, [searchTerm, statusFilter, dateRange])
+  }, [searchTerm, statusFilter, dateRange, currentPage])
 
   const fetchMessages = async () => {
     try {
@@ -75,6 +96,8 @@ export default function MessagesPage() {
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
       if (statusFilter !== 'all') params.append('status', statusFilter)
+      params.append('page', currentPage.toString())
+      params.append('limit', '20')
       
       // Set date range
       if (dateRange !== 'all') {
@@ -108,7 +131,8 @@ export default function MessagesPage() {
       case 'bounced':
       case 'rejected':
         return <XCircle className="h-3 w-3" />
-      case 'pending':
+      case 'held':
+      case 'delayed':
       case 'queued':
         return <Clock className="h-3 w-3" />
       default:
@@ -125,17 +149,13 @@ export default function MessagesPage() {
       case 'bounced':
       case 'rejected':
         return 'destructive'
-      case 'pending':
+      case 'held':
+      case 'delayed':
       case 'queued':
         return 'secondary'
       default:
         return 'outline'
     }
-  }
-
-  const getStatusLabel = (status: string) => {
-    if (!status) return 'Unknown'
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
   }
 
   const formatDate = (dateString: string) => {
@@ -150,11 +170,18 @@ export default function MessagesPage() {
     })
   }
 
-  const getSpamScoreColor = (score?: number) => {
-    if (!score) return 'text-muted-foreground'
-    if (score < 3) return 'text-green-600'
-    if (score < 7) return 'text-yellow-600'
-    return 'text-red-600'
+  const formatRelativeTime = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 24) {
+      return `${diffInHours}h ago`
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24)
+      return `${diffInDays}d ago`
+    }
   }
 
   const TableSkeleton = () => (
@@ -183,6 +210,82 @@ export default function MessagesPage() {
       ))}
     </div>
   )
+
+  const Pagination = () => {
+    if (!messagesData?.pagination || messagesData.pagination.totalPages <= 1) return null;
+
+    const { page, totalPages, hasPrevious, hasMore } = messagesData.pagination;
+
+    return (
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-muted-foreground">
+          Page {page} of {totalPages} ({messagesData.pagination.total.toLocaleString()} total messages)
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(page - 1)}
+            disabled={!hasPrevious}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+          
+          {/* Page numbers */}
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page > totalPages - 3) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === page ? "default" : "outline"}
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            {totalPages > 5 && page < totalPages - 3 && (
+              <>
+                <MoreHorizontal className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(totalPages)}
+                >
+                  {totalPages}
+                </Button>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(page + 1)}
+            disabled={!hasMore}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -260,8 +363,9 @@ export default function MessagesPage() {
           <option value="sent">Sent</option>
           <option value="failed">Failed</option>
           <option value="bounced">Bounced</option>
-          <option value="pending">Pending</option>
-          <option value="queued">Queued</option>
+          <option value="held">Held</option>
+          <option value="delayed">Delayed</option>
+          <option value="rejected">Rejected</option>
         </select>
 
         <select 
@@ -298,101 +402,103 @@ export default function MessagesPage() {
         </CardHeader>
         <CardContent>
           {messagesData?.messages.length ? (
-            <div className="space-y-4">
-              {messagesData.messages.map((message) => (
-                <div key={message.messageId} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    {/* Email Details */}
-                    <div className="md:col-span-4">
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <Mail className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate" title={message.recipient}>
-                              <User className="h-3 w-3 inline mr-1" />
-                              {message.recipient}
+            <div className="space-y-6">
+              <div className="space-y-4">
+                {messagesData.messages.map((message) => (
+                  <div key={message.messageId} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      {/* Email Details */}
+                      <div className="md:col-span-4">
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <Mail className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate" title={message.recipient}>
+                                <User className="h-3 w-3 inline mr-1" />
+                                {message.recipient}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate" title={message.sender}>
+                                From: {message.sender}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pl-6">
+                            <p className="text-xs text-muted-foreground">
+                              <FileText className="h-3 w-3 inline mr-1" />
+                              Domain: {message.domainName}
                             </p>
-                            <p className="text-xs text-muted-foreground truncate" title={message.sender}>
-                              From: {message.sender}
+                            <p className="text-xs text-muted-foreground">
+                              ID: #{message.emailId}
                             </p>
                           </div>
-                        </div>
-                        <div className="pl-6">
-                          <p className="text-xs text-muted-foreground">
-                            <FileText className="h-3 w-3 inline mr-1" />
-                            Domain: {message.domainName}
-                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Subject */}
-                    <div className="md:col-span-3">
-                      <div className="space-y-1">
-                        <p className="font-medium text-sm truncate" title={message.subject}>
-                          {message.subject}
-                        </p>
-                        {message.spamScore !== undefined && (
-                          <p className={`text-xs ${getSpamScoreColor(message.spamScore)}`}>
-                            Spam Score: {message.spamScore}/10
+                      {/* Subject */}
+                      <div className="md:col-span-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm truncate" title={message.subject}>
+                            {message.subject}
                           </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="md:col-span-2">
-                      <Badge variant={getStatusVariant(message.deliveryStatus)} className="text-xs">
-                        {getStatusIcon(message.deliveryStatus)}
-                        <span className="ml-1">{getStatusLabel(message.deliveryStatus)}</span>
-                      </Badge>
-                    </div>
-
-                    {/* Dates and Analytics */}
-                    <div className="md:col-span-3">
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Sent: {formatDate(message.sentDate)}</span>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              {message.analytics.opens} opens
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MousePointer className="h-3 w-3" />
+                              {message.analytics.clicks} clicks
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Activity className="h-3 w-3" />
+                              {message.analytics.totalEvents} events
+                            </span>
+                          </div>
                         </div>
-                        {message.firstOpenDate && (
+                      </div>
+
+                      {/* Status */}
+                      <div className="md:col-span-2">
+                        <Badge variant={getStatusVariant(message.currentStatus)} className="text-xs">
+                          {getStatusIcon(message.currentStatus)}
+                          <span className="ml-1">{message.statusLabel}</span>
+                        </Badge>
+                      </div>
+
+                      {/* Dates and Location */}
+                      <div className="md:col-span-3">
+                        <div className="space-y-1 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>Opened: {formatDate(message.firstOpenDate)}</span>
+                            <Calendar className="h-3 w-3" />
+                            <span>Sent: {formatDate(message.sentDate)}</span>
                           </div>
-                        )}
-                        {message.firstClickDate && (
-                          <div className="flex items-center gap-1">
-                            <MousePointer className="h-3 w-3" />
-                            <span>Clicked: {formatDate(message.firstClickDate)}</span>
-                          </div>
-                        )}
-                        {message.location && message.location !== 'Unknown' && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{message.location}</span>
-                          </div>
-                        )}
+                          {message.firstOpenDate && (
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              <span>Opened: {formatRelativeTime(message.firstOpenDate)}</span>
+                            </div>
+                          )}
+                          {message.firstClickDate && (
+                            <div className="flex items-center gap-1">
+                              <MousePointer className="h-3 w-3" />
+                              <span>Clicked: {formatRelativeTime(message.firstClickDate)}</span>
+                            </div>
+                          )}
+                          {message.location && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              <span>{message.location}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              {/* Load More */}
-              {messagesData.pagination.hasMore && (
-                <div className="flex justify-center pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      // TODO: Implement load more functionality
-                      console.log('Load more messages')
-                    }}
-                  >
-                    Load More Messages
-                  </Button>
-                </div>
-              )}
+              {/* Pagination */}
+              <Pagination />
             </div>
           ) : (
             <div className="text-center py-12">

@@ -59,9 +59,9 @@ model Email {
 
 model EmailEvent {
   id        String   @id @default(uuid())
-  eventId   String   @unique   
-  type      String            
-  status    String?           
+  eventId   String   @unique
+  type      String
+  status    String?
   occurredAt DateTime
 
 
@@ -79,6 +79,10 @@ model EmailEvent {
   rawPayload Json
 
   createdAt  DateTime @default(now())
+
+  @@index([emailId, type])
+  @@index([type, occurredAt])
+  @@index([emailId, occurredAt])
 }
 
 model EmailSummary {

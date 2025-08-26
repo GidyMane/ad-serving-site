@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { BarChart3, TrendingUp, PieChart, Mail, MousePointer, Eye, AlertTriangle } from 'lucide-react'
+import { formatChartDate, formatTooltipDate } from '@/lib/date-utils'
+import { useResponsiveChart } from '@/hooks/use-responsive-chart'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -118,27 +120,32 @@ const ENGAGEMENT_COLORS = {
 }
 
 // Custom label function for pie charts
-const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: CustomLabelProps) => {
-  if (percent < 0.05) return null; // Don't show labels for slices smaller than 5%
-  
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+const renderCustomLabel = (showLabels: boolean) => {
+  const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: CustomLabelProps) => {
+    if (!showLabels || percent < 0.05) return null; // Don't show labels on small screens or for slices smaller than 5%
 
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="white" 
-      textAnchor={x > cx ? 'start' : 'end'} 
-      dominantBaseline="central"
-      fontSize={12}
-      fontWeight="bold"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={showLabels ? 12 : 10}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+  CustomPieLabel.displayName = 'CustomPieLabel';
+  return CustomPieLabel;
 };
 
 export default function EnhancedAnalyticsDashboard() {
@@ -147,6 +154,7 @@ export default function EnhancedAnalyticsDashboard() {
   const [domainData, setDomainData] = useState<DomainData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const chartSettings = useResponsiveChart()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -217,11 +225,11 @@ export default function EnhancedAnalyticsDashboard() {
     <Card>
       <CardHeader>
         <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-64" />
+        <Skeleton className="h-4 w-48 sm:w-64" />
       </CardHeader>
-      <CardContent className="h-80">
+      <CardContent className="h-48 sm:h-64 md:h-80">
         <div className="w-full h-full flex items-center justify-center">
-          <Skeleton className="h-64 w-64 rounded-full" />
+          <Skeleton className="h-32 w-32 sm:h-48 sm:w-48 md:h-64 md:w-64 rounded-full" />
         </div>
       </CardContent>
     </Card>
@@ -346,7 +354,7 @@ export default function EnhancedAnalyticsDashboard() {
 
       {/* Charts Section */}
       <Tabs defaultValue="delivery" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
           <TabsTrigger value="delivery">Delivery Status</TabsTrigger>
           <TabsTrigger value="engagement">Engagement</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
@@ -378,8 +386,8 @@ export default function EnhancedAnalyticsDashboard() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={renderCustomLabel}
-                          outerRadius={100}
+                          label={renderCustomLabel(chartSettings.showLabels)}
+                          outerRadius="80%"
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -420,7 +428,7 @@ export default function EnhancedAnalyticsDashboard() {
                       held: { label: "Held", color: STATUS_COLORS.held },
                       delayed: { label: "Delayed", color: STATUS_COLORS.delayed }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
@@ -429,8 +437,8 @@ export default function EnhancedAnalyticsDashboard() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={renderCustomLabel}
-                          outerRadius={100}
+                          label={renderCustomLabel(chartSettings.showLabels)}
+                          outerRadius="80%"
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -470,7 +478,7 @@ export default function EnhancedAnalyticsDashboard() {
                       opened: { label: "Opened", color: ENGAGEMENT_COLORS.opened },
                       unopened: { label: "Not Opened", color: ENGAGEMENT_COLORS.unopened }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
@@ -479,8 +487,8 @@ export default function EnhancedAnalyticsDashboard() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={renderCustomLabel}
-                          outerRadius={100}
+                          label={renderCustomLabel(chartSettings.showLabels)}
+                          outerRadius="80%"
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -516,7 +524,7 @@ export default function EnhancedAnalyticsDashboard() {
                       clicked: { label: "Clicked", color: ENGAGEMENT_COLORS.clicked },
                       notClicked: { label: "Not Clicked", color: ENGAGEMENT_COLORS.notClicked }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
@@ -525,8 +533,8 @@ export default function EnhancedAnalyticsDashboard() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={renderCustomLabel}
-                          outerRadius={100}
+                          label={renderCustomLabel(chartSettings.showLabels)}
+                          outerRadius="80%"
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -566,14 +574,29 @@ export default function EnhancedAnalyticsDashboard() {
                     delivered: { label: "Delivered", color: STATUS_COLORS.delivered },
                     failed: { label: "Failed", color: STATUS_COLORS.failed }
                   }}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-96"
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={eventsData.charts.volume} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <AreaChart
+                      data={eventsData.charts.volume}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={formatChartDate}
+                        tick={{ fontSize: chartSettings.tickFontSize }}
+                        angle={chartSettings.axisAngle}
+                        textAnchor="end"
+                        height={chartSettings.axisHeight}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
+                      <ChartTooltip
+                        content={<ChartTooltipContent
+                          labelFormatter={(label) => formatTooltipDate(label)}
+                        />}
+                      />
                       <Area type="monotone" dataKey="total" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
                       <Area type="monotone" dataKey="delivered" stackId="2" stroke={STATUS_COLORS.delivered} fill={STATUS_COLORS.delivered} fillOpacity={0.8} />
                       <Area type="monotone" dataKey="failed" stackId="2" stroke={STATUS_COLORS.failed} fill={STATUS_COLORS.failed} fillOpacity={0.8} />
@@ -603,13 +626,20 @@ export default function EnhancedAnalyticsDashboard() {
                     opens: { label: "Opens", color: ENGAGEMENT_COLORS.opened },
                     clicks: { label: "Clicks", color: ENGAGEMENT_COLORS.clicked }
                   }}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-96"
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={eventsData.charts.engagement} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <BarChart
+                      data={eventsData.charts.engagement}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="day_name" />
-                      <YAxis />
+                      <XAxis
+                        dataKey="day_name"
+                        tick={{ fontSize: chartSettings.tickFontSize }}
+                        tickFormatter={(value) => value.trim()}
+                      />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="opens" fill={ENGAGEMENT_COLORS.opened} name="Opens" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="clicks" fill={ENGAGEMENT_COLORS.clicked} name="Clicks" radius={[4, 4, 0, 0]} />
@@ -646,7 +676,7 @@ export default function EnhancedAnalyticsDashboard() {
                     held: { label: "Held", color: STATUS_COLORS.held },
                     delayed: { label: "Delayed", color: STATUS_COLORS.delayed }
                   }}
-                  className="h-80"
+                  className="h-48 sm:h-64 md:h-80"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -659,11 +689,17 @@ export default function EnhancedAnalyticsDashboard() {
                         { name: 'Held', value: statsData.detailedStatus.held, color: STATUS_COLORS.held },
                         { name: 'Delayed', value: statsData.detailedStatus.delayed, color: STATUS_COLORS.delayed }
                       ]}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 20, right: 30, left: 20, bottom: chartSettings.axisHeight + 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                      <YAxis />
+                      <XAxis
+                        dataKey="name"
+                        angle={chartSettings.axisAngle}
+                        textAnchor="end"
+                        height={chartSettings.axisHeight}
+                        tick={{ fontSize: chartSettings.tickFontSize }}
+                      />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {[

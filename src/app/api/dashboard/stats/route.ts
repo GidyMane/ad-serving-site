@@ -107,14 +107,17 @@ export async function GET() {
         ? (totalDelivered / aggregatedSummary.totalSent) * 100
         : 0;
 
+    // Use delivered emails as denominator for more accurate rates (emails that failed can't be opened/clicked)
+    const totalDeliveredForRates = Math.max(1, totalDelivered); // Prevent division by zero
+
     const openRate =
-      aggregatedSummary.totalSent > 0
-        ? (aggregatedSummary.totalLoaded / aggregatedSummary.totalSent) * 100
+      totalDelivered > 0
+        ? (aggregatedSummary.totalLoaded / totalDelivered) * 100
         : 0;
 
     const clickRate =
-      aggregatedSummary.totalSent > 0
-        ? (aggregatedSummary.totalClicked / aggregatedSummary.totalSent) * 100
+      totalDelivered > 0
+        ? (aggregatedSummary.totalClicked / totalDelivered) * 100
         : 0;
 
     // Safe SQL cast to int

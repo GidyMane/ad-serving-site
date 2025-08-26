@@ -669,7 +669,7 @@ export default function EnhancedAnalyticsDashboard() {
                     held: { label: "Held", color: STATUS_COLORS.held },
                     delayed: { label: "Delayed", color: STATUS_COLORS.delayed }
                   }}
-                  className="h-80"
+                  className="h-48 sm:h-64 md:h-80"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart

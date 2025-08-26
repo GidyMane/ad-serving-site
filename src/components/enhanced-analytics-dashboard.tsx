@@ -120,27 +120,32 @@ const ENGAGEMENT_COLORS = {
 }
 
 // Custom label function for pie charts
-const renderCustomLabel = (showLabels: boolean) => ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: CustomLabelProps) => {
-  if (!showLabels || percent < 0.05) return null; // Don't show labels on small screens or for slices smaller than 5%
+const renderCustomLabel = (showLabels: boolean) => {
+  const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: CustomLabelProps) => {
+    if (!showLabels || percent < 0.05) return null; // Don't show labels on small screens or for slices smaller than 5%
 
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      fontSize={showLabels ? 12 : 10}
-      fontWeight="bold"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={showLabels ? 12 : 10}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+  CustomPieLabel.displayName = 'CustomPieLabel';
+  return CustomPieLabel;
 };
 
 export default function EnhancedAnalyticsDashboard() {

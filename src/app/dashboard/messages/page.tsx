@@ -467,7 +467,7 @@ export default function MessagesPage() {
             </CardDescription>
           </div>
           {messagesData?.messages.length ? (
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={exportMessages}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>

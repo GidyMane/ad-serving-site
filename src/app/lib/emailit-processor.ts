@@ -235,7 +235,8 @@ export async function processEmailitEvent(payload: EventPayload) {
       });
     }
 
-    if (type === "email.loaded") {
+    // Only increment summary counters for first open/click per email to prevent >100% rates
+    if (type === "email.loaded" && !email.firstOpenAt) {
       await tx.emailSummary.upsert({
         where: { domainId: domain.id },
         update: { totalLoaded: { increment: 1 } },
@@ -243,7 +244,7 @@ export async function processEmailitEvent(payload: EventPayload) {
       });
     }
 
-    if (type === "email.link.clicked") {
+    if (type === "email.link.clicked" && !email.firstClickAt) {
       await tx.emailSummary.upsert({
         where: { domainId: domain.id },
         update: { totalClicked: { increment: 1 } },

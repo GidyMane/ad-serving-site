@@ -150,17 +150,20 @@ export async function GET(request: NextRequest) {
 
     // Process emails and extract latest delivery status
     let processedEmails = emails.map(email => {
-      // Find the latest delivery event
-      const deliveryEvent = email.events.find(event => 
-        event.type.startsWith('email.delivery.') || 
-        event.type.includes('sent') || 
-        event.type.includes('delivered') ||
-        event.type.includes('failed') ||
-        event.type.includes('bounced')
+      // Find the latest delivery event with actual status
+      const deliveryEvent = email.events.find(event =>
+        event.status && (
+          event.type.startsWith('email.delivery.') ||
+          event.type.includes('sent') ||
+          event.type.includes('delivered') ||
+          event.type.includes('failed') ||
+          event.type.includes('bounced')
+        )
       );
 
       const latestEvent = email.events[0];
-      const currentStatus = deliveryEvent ? extractStatusFromEventType(deliveryEvent.type) : 'unknown';
+      // Use the actual status from the event, not parsed from type
+      const currentStatus = deliveryEvent?.status || latestEvent?.status || 'unknown';
 
       // Count different event types for analytics
       const eventCounts = {
@@ -184,9 +187,6 @@ export async function GET(request: NextRequest) {
         firstClickDate: email.firstClickAt,
         lastEventType: latestEvent?.type,
         lastEventDate: latestEvent?.occurredAt,
-        location: latestEvent?.country && latestEvent?.city 
-          ? `${latestEvent.city}, ${latestEvent.country}` 
-          : latestEvent?.country || null,
         userAgent: latestEvent?.userAgent,
         ipAddress: latestEvent?.ipAddress,
         analytics: eventCounts,

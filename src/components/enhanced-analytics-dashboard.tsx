@@ -566,14 +566,29 @@ export default function EnhancedAnalyticsDashboard() {
                     delivered: { label: "Delivered", color: STATUS_COLORS.delivered },
                     failed: { label: "Failed", color: STATUS_COLORS.failed }
                   }}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-96"
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={eventsData.charts.volume} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <AreaChart
+                      data={eventsData.charts.volume}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={formatChartDate}
+                        tick={{ fontSize: 11 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <ChartTooltip
+                        content={<ChartTooltipContent
+                          labelFormatter={(label) => formatTooltipDate(label)}
+                        />}
+                      />
                       <Area type="monotone" dataKey="total" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
                       <Area type="monotone" dataKey="delivered" stackId="2" stroke={STATUS_COLORS.delivered} fill={STATUS_COLORS.delivered} fillOpacity={0.8} />
                       <Area type="monotone" dataKey="failed" stackId="2" stroke={STATUS_COLORS.failed} fill={STATUS_COLORS.failed} fillOpacity={0.8} />

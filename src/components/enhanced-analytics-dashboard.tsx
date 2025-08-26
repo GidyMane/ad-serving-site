@@ -194,31 +194,31 @@ export default function EnhancedAnalyticsDashboard() {
     fetchData()
   }, [])
 
-  // Prepare pie chart data
+  // Prepare pie chart data with safety checks to prevent percentages over 100%
   const deliveryStatusPieData: PieData[] = statsData ? [
-    { name: 'Delivered', value: statsData.delivered, color: STATUS_COLORS.delivered },
-    { name: 'Failed', value: statsData.failed, color: STATUS_COLORS.failed },
-    { name: 'Pending', value: statsData.pending, color: STATUS_COLORS.pending }
+    { name: 'Delivered', value: Math.min(statsData.delivered, statsData.totalSent), color: STATUS_COLORS.delivered },
+    { name: 'Failed', value: Math.min(statsData.failed, statsData.totalSent), color: STATUS_COLORS.failed },
+    { name: 'Pending', value: Math.min(statsData.pending, statsData.totalSent), color: STATUS_COLORS.pending }
   ].filter(item => item.value > 0) : []
 
   const detailedStatusPieData: PieData[] = statsData ? [
-    { name: 'Delivered', value: statsData.detailedStatus.sent, color: STATUS_COLORS.delivered },
-    { name: 'Hard Fail', value: statsData.detailedStatus.hardfail, color: STATUS_COLORS.hardfail },
-    { name: 'Soft Fail', value: statsData.detailedStatus.softfail, color: STATUS_COLORS.softfail },
-    { name: 'Bounced', value: statsData.detailedStatus.bounce, color: STATUS_COLORS.bounce },
-    { name: 'Error', value: statsData.detailedStatus.error, color: STATUS_COLORS.error },
-    { name: 'Held', value: statsData.detailedStatus.held, color: STATUS_COLORS.held },
-    { name: 'Delayed', value: statsData.detailedStatus.delayed, color: STATUS_COLORS.delayed }
+    { name: 'Delivered', value: Math.min(statsData.detailedStatus.sent, statsData.totalSent), color: STATUS_COLORS.delivered },
+    { name: 'Hard Fail', value: Math.min(statsData.detailedStatus.hardfail, statsData.totalSent), color: STATUS_COLORS.hardfail },
+    { name: 'Soft Fail', value: Math.min(statsData.detailedStatus.softfail, statsData.totalSent), color: STATUS_COLORS.softfail },
+    { name: 'Bounced', value: Math.min(statsData.detailedStatus.bounce, statsData.totalSent), color: STATUS_COLORS.bounce },
+    { name: 'Error', value: Math.min(statsData.detailedStatus.error, statsData.totalSent), color: STATUS_COLORS.error },
+    { name: 'Held', value: Math.min(statsData.detailedStatus.held, statsData.totalSent), color: STATUS_COLORS.held },
+    { name: 'Delayed', value: Math.min(statsData.detailedStatus.delayed, statsData.totalSent), color: STATUS_COLORS.delayed }
   ].filter(item => item.value > 0) : []
 
   const engagementPieData: PieData[] = statsData ? [
-    { name: 'Opened', value: statsData.opens, color: ENGAGEMENT_COLORS.opened },
-    { name: 'Not Opened', value: Math.max(0, statsData.totalSent - statsData.opens), color: ENGAGEMENT_COLORS.unopened }
+    { name: 'Opened', value: Math.min(statsData.opens, statsData.totalSent), color: ENGAGEMENT_COLORS.opened },
+    { name: 'Not Opened', value: Math.max(0, statsData.totalSent - Math.min(statsData.opens, statsData.totalSent)), color: ENGAGEMENT_COLORS.unopened }
   ].filter(item => item.value > 0) : []
 
   const clicksPieData: PieData[] = statsData ? [
-    { name: 'Clicked', value: statsData.clicks, color: ENGAGEMENT_COLORS.clicked },
-    { name: 'Not Clicked', value: Math.max(0, statsData.totalSent - statsData.clicks), color: ENGAGEMENT_COLORS.notClicked }
+    { name: 'Clicked', value: Math.min(statsData.clicks, statsData.totalSent), color: ENGAGEMENT_COLORS.clicked },
+    { name: 'Not Clicked', value: Math.max(0, statsData.totalSent - Math.min(statsData.clicks, statsData.totalSent)), color: ENGAGEMENT_COLORS.notClicked }
   ].filter(item => item.value > 0) : []
 
   const ChartSkeleton = () => (
@@ -318,7 +318,7 @@ export default function EnhancedAnalyticsDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.deliveryRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.deliveryRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.delivered?.toLocaleString() || 0} delivered
             </p>
@@ -331,7 +331,7 @@ export default function EnhancedAnalyticsDashboard() {
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.openRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.openRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.opens?.toLocaleString() || 0} opens
             </p>
@@ -344,7 +344,7 @@ export default function EnhancedAnalyticsDashboard() {
             <MousePointer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsData?.clickRate?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">{Math.min(100, statsData?.clickRate || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               {statsData?.clicks?.toLocaleString() || 0} clicks
             </p>
@@ -766,15 +766,15 @@ export default function EnhancedAnalyticsDashboard() {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Delivery Rate:</span>
-                  <span className="font-medium">{statsData?.deliveryRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.deliveryRate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Open Rate:</span>
-                  <span className="font-medium">{statsData?.openRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.openRate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Click Rate:</span>
-                  <span className="font-medium">{statsData?.clickRate?.toFixed(1) || 0}%</span>
+                  <span className="font-medium">{Math.min(100, statsData?.clickRate || 0).toFixed(1)}%</span>
                 </div>
               </CardContent>
             </Card>

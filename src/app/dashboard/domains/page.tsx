@@ -124,7 +124,13 @@ export default function DomainsPage() {
 
   const getDeliveryRate = (domain: SendingDomain): number => {
     if (!domain.summary || domain.summary.totalSent === 0) return 0
-    return Math.round((domain.summary.totalSent / domain.totalEmails) * 100)
+    // Calculate actual delivery rate: delivered emails vs sent emails
+    const totalFailed = (domain.summary.totalHardFail || 0) +
+                       (domain.summary.totalSoftFail || 0) +
+                       (domain.summary.totalBounce || 0) +
+                       (domain.summary.totalError || 0)
+    const delivered = Math.max(0, domain.summary.totalSent - totalFailed)
+    return Math.round((delivered / domain.summary.totalSent) * 100)
   }
 
   const TableSkeleton = () => (

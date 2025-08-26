@@ -191,30 +191,46 @@ export async function processEmailitEvent(payload: EventPayload) {
       },
     });
 
-    // 4) Update email state
-    const updates: Record<string, unknown> = {};
+    // 4) Update email state and summary counters atomically
     let newStatus: string | null = null;
+    let shouldIncrementOpen = false;
+    let shouldIncrementClick = false;
 
     if (type.startsWith("email.delivery.")) {
       newStatus = DELIVERY_STATUS_MAP[type];
-      updates.deliveryStatus = newStatus;
+      const updates: Record<string, unknown> = { deliveryStatus: newStatus };
       if (type === "email.delivery.sent" && !email.sentAt) {
         updates.sentAt = occurredAt;
       }
-    }
 
-    if (type === "email.loaded" && !email.firstOpenAt) {
-      updates.firstOpenAt = occurredAt;
-    }
-    if (type === "email.link.clicked" && !email.firstClickAt) {
-      updates.firstClickAt = occurredAt;
-    }
-
-    if (Object.keys(updates).length > 0) {
       await tx.email.update({
         where: { id: email.id },
         data: updates,
       });
+    }
+
+    // Atomic update for first open - only increment summary if we successfully set firstOpenAt
+    if (type === "email.loaded") {
+      const updateResult = await tx.email.updateMany({
+        where: {
+          id: email.id,
+          firstOpenAt: null
+        },
+        data: { firstOpenAt: occurredAt },
+      });
+      shouldIncrementOpen = updateResult.count === 1;
+    }
+
+    // Atomic update for first click - only increment summary if we successfully set firstClickAt
+    if (type === "email.link.clicked") {
+      const updateResult = await tx.email.updateMany({
+        where: {
+          id: email.id,
+          firstClickAt: null
+        },
+        data: { firstClickAt: occurredAt },
+      });
+      shouldIncrementClick = updateResult.count === 1;
     }
 
     // 5) Update EmailSummary counters
@@ -235,8 +251,8 @@ export async function processEmailitEvent(payload: EventPayload) {
       });
     }
 
-    // Only increment summary counters for first open/click per email to prevent >100% rates
-    if (type === "email.loaded" && !email.firstOpenAt) {
+    // Only increment summary counters if we successfully updated the email (prevents race conditions)
+    if (shouldIncrementOpen) {
       await tx.emailSummary.upsert({
         where: { domainId: domain.id },
         update: { totalLoaded: { increment: 1 } },
@@ -244,7 +260,7 @@ export async function processEmailitEvent(payload: EventPayload) {
       });
     }
 
-    if (type === "email.link.clicked" && !email.firstClickAt) {
+    if (shouldIncrementClick) {
       await tx.emailSummary.upsert({
         where: { domainId: domain.id },
         update: { totalClicked: { increment: 1 } },

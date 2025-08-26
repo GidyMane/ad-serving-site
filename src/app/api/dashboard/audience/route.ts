@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       );
 
       // Convert BigInt values to Numbers to avoid BigInt math errors
-      const totalEmails = Number(engagement?.total_emails || recipient._count.id || 0);
+      const totalEmails = Number(engagement?.total_emails || Number(recipient._count.id) || 0);
       const totalOpens = Number(engagement?.total_opens || 0);
       const totalClicks = Number(engagement?.total_clicks || 0);
       const deliveredEmails = Number(engagement?.delivered_emails || 0);

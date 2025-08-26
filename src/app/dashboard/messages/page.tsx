@@ -44,7 +44,6 @@ interface EmailMessage {
   firstClickDate?: string;
   lastEventType?: string;
   lastEventDate?: string;
-  location?: string;
   userAgent?: string;
   ipAddress?: string;
   analytics: {
@@ -427,9 +426,6 @@ export default function MessagesPage() {
                               <FileText className="h-3 w-3 inline mr-1" />
                               Domain: {message.domainName}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              ID: #{message.emailId}
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -482,12 +478,6 @@ export default function MessagesPage() {
                             <div className="flex items-center gap-1">
                               <MousePointer className="h-3 w-3" />
                               <span>Clicked: {formatRelativeTime(message.firstClickDate)}</span>
-                            </div>
-                          )}
-                          {message.location && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              <span>{message.location}</span>
                             </div>
                           )}
                         </div>

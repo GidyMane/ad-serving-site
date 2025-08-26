@@ -104,7 +104,8 @@ export async function GET(request: NextRequest) {
     // ✅ aggregate using relations
     const volumeData = isAdmin
       ? await prisma.$queryRawUnsafe(`
-        SELECT DATE(e."occurredAt") as date,
+        SELECT
+               to_char(DATE(e."occurredAt"), 'YYYY-MM-DD') as date,
                COUNT(*) as total,
                COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
                COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,
@@ -118,7 +119,8 @@ export async function GET(request: NextRequest) {
         ORDER BY DATE(e."occurredAt")
       `, domainIds, thirtyDaysAgo)
       : await prisma.$queryRawUnsafe(`
-        SELECT DATE(e."occurredAt") as date,
+        SELECT
+               to_char(DATE(e."occurredAt"), 'YYYY-MM-DD') as date,
                COUNT(*) as total,
                COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
                COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,

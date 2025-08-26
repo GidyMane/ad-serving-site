@@ -220,7 +220,7 @@ export default function EnhancedAnalyticsDashboard() {
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-4 w-64" />
       </CardHeader>
-      <CardContent className="h-80">
+      <CardContent className="h-48 sm:h-64 md:h-80">
         <div className="w-full h-full flex items-center justify-center">
           <Skeleton className="h-64 w-64 rounded-full" />
         </div>
@@ -421,7 +421,7 @@ export default function EnhancedAnalyticsDashboard() {
                       held: { label: "Held", color: STATUS_COLORS.held },
                       delayed: { label: "Delayed", color: STATUS_COLORS.delayed }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
@@ -471,7 +471,7 @@ export default function EnhancedAnalyticsDashboard() {
                       opened: { label: "Opened", color: ENGAGEMENT_COLORS.opened },
                       unopened: { label: "Not Opened", color: ENGAGEMENT_COLORS.unopened }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
@@ -517,7 +517,7 @@ export default function EnhancedAnalyticsDashboard() {
                       clicked: { label: "Clicked", color: ENGAGEMENT_COLORS.clicked },
                       notClicked: { label: "Not Clicked", color: ENGAGEMENT_COLORS.notClicked }
                     }}
-                    className="h-80"
+                    className="h-48 sm:h-64 md:h-80"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>

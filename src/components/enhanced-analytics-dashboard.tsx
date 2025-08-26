@@ -622,10 +622,17 @@ export default function EnhancedAnalyticsDashboard() {
                   className="h-64 sm:h-80 md:h-96"
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={eventsData.charts.engagement} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <BarChart
+                      data={eventsData.charts.engagement}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="day_name" />
-                      <YAxis />
+                      <XAxis
+                        dataKey="day_name"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => value.trim()}
+                      />
+                      <YAxis tick={{ fontSize: 11 }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="opens" fill={ENGAGEMENT_COLORS.opened} name="Opens" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="clicks" fill={ENGAGEMENT_COLORS.clicked} name="Clicks" radius={[4, 4, 0, 0]} />

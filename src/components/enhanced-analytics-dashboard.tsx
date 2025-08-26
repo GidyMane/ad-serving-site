@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { BarChart3, TrendingUp, PieChart, Mail, MousePointer, Eye, AlertTriangle } from 'lucide-react'
+import { formatChartDate, formatTooltipDate } from '@/lib/date-utils'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"

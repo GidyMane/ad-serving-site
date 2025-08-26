@@ -4,6 +4,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { BarChart3, TrendingUp, PieChart, Mail, MousePointer, Eye, AlertTriangle } from 'lucide-react'
 import { formatChartDate, formatTooltipDate } from '@/lib/date-utils'
+import { useResponsiveChart } from '@/hooks/use-responsive-chart'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -148,6 +149,7 @@ export default function EnhancedAnalyticsDashboard() {
   const [domainData, setDomainData] = useState<DomainData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const chartSettings = useResponsiveChart()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -218,11 +220,11 @@ export default function EnhancedAnalyticsDashboard() {
     <Card>
       <CardHeader>
         <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-64" />
+        <Skeleton className="h-4 w-48 sm:w-64" />
       </CardHeader>
       <CardContent className="h-48 sm:h-64 md:h-80">
         <div className="w-full h-full flex items-center justify-center">
-          <Skeleton className="h-64 w-64 rounded-full" />
+          <Skeleton className="h-32 w-32 sm:h-48 sm:w-48 md:h-64 md:w-64 rounded-full" />
         </div>
       </CardContent>
     </Card>

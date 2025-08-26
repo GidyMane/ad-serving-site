@@ -104,7 +104,7 @@ export async function GET() {
 
     const deliveryRate =
       aggregatedSummary.totalSent > 0
-        ? (totalDelivered / aggregatedSummary.totalSent) * 100
+        ? Math.min(100, (totalDelivered / aggregatedSummary.totalSent) * 100)
         : 0;
 
     // Use delivered emails as denominator for more accurate rates (emails that failed can't be opened/clicked)
@@ -112,12 +112,12 @@ export async function GET() {
 
     const openRate =
       totalDelivered > 0
-        ? (aggregatedSummary.totalLoaded / totalDelivered) * 100
+        ? Math.min(100, (aggregatedSummary.totalLoaded / totalDelivered) * 100)
         : 0;
 
     const clickRate =
       totalDelivered > 0
-        ? (aggregatedSummary.totalClicked / totalDelivered) * 100
+        ? Math.min(100, (aggregatedSummary.totalClicked / totalDelivered) * 100)
         : 0;
 
     // Safe SQL cast to int
@@ -168,12 +168,12 @@ export async function GET() {
     // Engagement metrics
     const recipientOpenRate =
       engagement.total_recipients > 0
-        ? (engagement.recipients_who_opened / engagement.total_recipients) * 100
+        ? Math.min(100, (engagement.recipients_who_opened / engagement.total_recipients) * 100)
         : 0;
 
     const recipientClickRate =
       engagement.total_recipients > 0
-        ? (engagement.recipients_who_clicked / engagement.total_recipients) * 100
+        ? Math.min(100, (engagement.recipients_who_clicked / engagement.total_recipients) * 100)
         : 0;
 
     return NextResponse.json({

@@ -580,13 +580,13 @@ export default function EnhancedAnalyticsDashboard() {
                       <XAxis
                         dataKey="date"
                         tickFormatter={formatChartDate}
-                        tick={{ fontSize: 11 }}
-                        angle={-45}
+                        tick={{ fontSize: chartSettings.tickFontSize }}
+                        angle={chartSettings.axisAngle}
                         textAnchor="end"
-                        height={60}
+                        height={chartSettings.axisHeight}
                         interval="preserveStartEnd"
                       />
-                      <YAxis tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
                       <ChartTooltip
                         content={<ChartTooltipContent
                           labelFormatter={(label) => formatTooltipDate(label)}
@@ -631,10 +631,10 @@ export default function EnhancedAnalyticsDashboard() {
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                       <XAxis
                         dataKey="day_name"
-                        tick={{ fontSize: 11 }}
+                        tick={{ fontSize: chartSettings.tickFontSize }}
                         tickFormatter={(value) => value.trim()}
                       />
-                      <YAxis tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: chartSettings.tickFontSize }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar dataKey="opens" fill={ENGAGEMENT_COLORS.opened} name="Opens" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="clicks" fill={ENGAGEMENT_COLORS.clicked} name="Clicks" radius={[4, 4, 0, 0]} />

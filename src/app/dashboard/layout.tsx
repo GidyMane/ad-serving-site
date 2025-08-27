@@ -170,19 +170,17 @@ export default function DashboardLayout({
                 <SidebarMenu>
                   {section.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
+                      <NavLink
+                        href={item.href}
                         isActive={
-                          item.href === "/dashboard" 
+                          item.href === "/dashboard"
                             ? pathname === "/dashboard"
                             : pathname?.startsWith(item.href)
                         }
                       >
-                        <Link href={item.href} className="flex items-center gap-2">
-                          <item.icon className="size-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>

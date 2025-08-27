@@ -6,15 +6,15 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
   BarChart3,
-  Bell,
   ChevronDown,
   FileText,
   Home,
   Inbox,
+  LogOut,
   Mail,
-  Search,
+  Moon,
   Send,
-  Settings,
+  Sun,
   Users
 } from 'lucide-react'
 
@@ -111,6 +111,22 @@ export default function DashboardLayout({
   const [domainData, setDomainData] = useState<DomainData | null>(null)
   const [audienceData, setAudienceData] = useState<AudienceData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Theme toggle functionality
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    setIsDarkMode(isDark)
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [])
+
+  const toggleTheme = () => {
+    const newIsDark = !isDarkMode
+    setIsDarkMode(newIsDark)
+    document.documentElement.classList.toggle('dark', newIsDark)
+    localStorage.setItem('theme', newIsDark ? 'dark' : 'light')
+  }
 
   // Fetch user and domain data for layout
   useEffect(() => {
@@ -212,16 +228,9 @@ export default function DashboardLayout({
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 size-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Bell className="mr-2 size-4" />
-                    Notifications
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <LogoutLink className="text-red-500">
+                    <LogoutLink className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 font-medium">
+                      <LogOut className="mr-2 size-4" />
                       Sign out
                     </LogoutLink>
                   </DropdownMenuItem>
@@ -252,118 +261,52 @@ export default function DashboardLayout({
               )}
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-2">
-              {/* Quick Stats */}
-              {domainData?.domain && (
-                <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-lg text-xs">
-                  <div className="flex items-center gap-1">
-                    <Send className="size-3 text-blue-600" />
-                    <span className="font-medium">{domainData.domain.emailCount}</span>
-                    <span className="text-muted-foreground">sent</span>
-                  </div>
-                  <Separator orientation="vertical" className="h-3" />
-                  <div className="flex items-center gap-1">
-                    <Users className="size-3 text-green-600" />
-                    <span className="text-muted-foreground">Active domain</span>
-                  </div>
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              {/* Dark/Light Mode Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9 sm:h-10 sm:w-10"
+                title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? (
+                  <Sun className="size-4" />
+                ) : (
+                  <Moon className="size-4" />
+                )}
+              </Button>
 
-              {/* Notifications */}
+              {/* User Menu with Prominent Logout */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 relative">
-                    <Bell className="size-4" />
-                    {domainData?.domain?.emailCount && domainData.domain.emailCount > 0 && (
-                      <div className="absolute -top-1 -right-1 size-2 rounded-full bg-blue-600"></div>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <div className="px-3 py-2 border-b">
-                    <h4 className="font-medium text-sm">Recent Activity</h4>
-                    <p className="text-xs text-muted-foreground">Domain: {domainData?.userDomain}</p>
-                  </div>
-                  {domainData?.domain?.emailCount && domainData.domain.emailCount > 0 ? (
-                    <>
-                      <DropdownMenuItem className="flex flex-col items-start p-3">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Send className="size-4 text-blue-600" />
-                          {domainData.domain.emailCount} emails sent
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Total emails sent from your domain
-                        </p>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/dashboard/messages" className="flex items-center px-3">
-                          <Mail className="mr-2 size-4" />
-                          View all messages
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/dashboard/analytics" className="flex items-center px-3">
-                          <BarChart3 className="mr-2 size-4" />
-                          View analytics
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <div className="px-3 py-4 text-center">
-                      <Mail className="size-8 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No recent activity</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Start sending emails to see notifications
-                      </p>
+                  <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 gap-2">
+                    <div className="flex aspect-square size-6 sm:size-7 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-medium">
+                      {loading ? 'U' : (domainData?.userEmail?.charAt(0).toUpperCase() || 'U')}
                     </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Quick Actions Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
-                    <Settings className="size-4" />
+                    <span className="hidden sm:inline text-sm font-medium">
+                      {loading ? 'User' : (domainData?.userEmail?.split('@')[0] || 'User')}
+                    </span>
+                    <ChevronDown className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-3 py-2 border-b">
+                    <p className="text-sm font-medium">
+                      {loading ? 'Loading...' : (domainData?.userEmail?.split('@')[0] || 'User')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {loading ? 'user@domain.com' : (domainData?.userEmail || 'user@domain.com')}
+                    </p>
+                  </div>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/messages" className="flex items-center">
-                      <Send className="mr-2 size-4" />
-                      View Messages
-                    </Link>
+                    <LogoutLink className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 font-medium w-full flex items-center px-3 py-2">
+                      <LogOut className="mr-2 size-4" />
+                      Sign out
+                    </LogoutLink>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/audience" className="flex items-center">
-                      <Users className="mr-2 size-4" />
-                      View Audience
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/analytics" className="flex items-center">
-                      <BarChart3 className="mr-2 size-4" />
-                      View Analytics
-                    </Link>
-                  </DropdownMenuItem>
-                  {audienceData?.isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/domains" className="flex items-center">
-                        <Send className="mr-2 size-4" />
-                        Manage Domains
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* Status Indicator */}
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-                  <div className="size-2 rounded-full bg-green-500"></div>
-                  <span>Online</span>
-                </div>
-              </div>
             </div>
           </div>
         </header>

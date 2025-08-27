@@ -269,6 +269,57 @@ export default function DashboardLayout({
                 </div>
               )}
 
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 relative">
+                    <Bell className="size-4" />
+                    {domainData?.domain?.emailCount && domainData.domain.emailCount > 0 && (
+                      <div className="absolute -top-1 -right-1 size-2 rounded-full bg-blue-600"></div>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <div className="px-3 py-2 border-b">
+                    <h4 className="font-medium text-sm">Recent Activity</h4>
+                    <p className="text-xs text-muted-foreground">Domain: {domainData?.userDomain}</p>
+                  </div>
+                  {domainData?.domain?.emailCount && domainData.domain.emailCount > 0 ? (
+                    <>
+                      <DropdownMenuItem className="flex flex-col items-start p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Send className="size-4 text-blue-600" />
+                          {domainData.domain.emailCount} emails sent
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Total emails sent from your domain
+                        </p>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard/messages" className="flex items-center px-3">
+                          <Mail className="mr-2 size-4" />
+                          View all messages
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard/analytics" className="flex items-center px-3">
+                          <BarChart3 className="mr-2 size-4" />
+                          View analytics
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <div className="px-3 py-4 text-center">
+                      <Mail className="size-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Start sending emails to see notifications
+                      </p>
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {/* Quick Actions Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -295,6 +346,14 @@ export default function DashboardLayout({
                       View Analytics
                     </Link>
                   </DropdownMenuItem>
+                  {audienceData?.isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/domains" className="flex items-center">
+                        <Send className="mr-2 size-4" />
+                        Manage Domains
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 

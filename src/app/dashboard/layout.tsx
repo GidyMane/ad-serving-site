@@ -83,6 +83,25 @@ const getNavigation = (isAdmin: boolean = false) => [
   }
 ]
 
+// Mobile-aware navigation link component
+function NavLink({ href, children, isActive }: { href: string; children: React.ReactNode; isActive: boolean }) {
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  const handleClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
+  return (
+    <SidebarMenuButton asChild isActive={isActive}>
+      <Link href={href} className="flex items-center gap-2" onClick={handleClick}>
+        {children}
+      </Link>
+    </SidebarMenuButton>
+  )
+}
+
 export default function DashboardLayout({
   children,
 }: {

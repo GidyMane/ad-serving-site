@@ -237,21 +237,74 @@ export default function DashboardLayout({
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h1 className="font-semibold text-sm sm:text-base truncate">
-              <span className="hidden sm:inline">Dashboard - {domainData?.userDomain || 'Domain'}</span>
-              <span className="sm:hidden">{domainData?.userDomain || 'Dashboard'}</span>
-            </h1>
-            <div className="ml-auto flex items-center gap-1 sm:gap-2">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-8 w-36 lg:w-48 xl:w-64" />
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold text-sm sm:text-base truncate">
+                <span className="hidden sm:inline">Dashboard - {domainData?.userDomain || 'Domain'}</span>
+                <span className="sm:hidden">{domainData?.userDomain || 'Dashboard'}</span>
+              </h1>
+              {domainData?.domain && (
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  {domainData.domain.emailCount > 0
+                    ? `${domainData.domain.emailCount.toLocaleString()} emails sent`
+                    : 'No emails sent yet'
+                  }
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Quick Stats */}
+              {domainData?.domain && (
+                <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-lg text-xs">
+                  <div className="flex items-center gap-1">
+                    <Send className="size-3 text-blue-600" />
+                    <span className="font-medium">{domainData.domain.emailCount}</span>
+                    <span className="text-muted-foreground">sent</span>
+                  </div>
+                  <Separator orientation="vertical" className="h-3" />
+                  <div className="flex items-center gap-1">
+                    <Users className="size-3 text-green-600" />
+                    <span className="text-muted-foreground">Active domain</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
+                    <Settings className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/messages" className="flex items-center">
+                      <Send className="mr-2 size-4" />
+                      View Messages
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/audience" className="flex items-center">
+                      <Users className="mr-2 size-4" />
+                      View Audience
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/analytics" className="flex items-center">
+                      <BarChart3 className="mr-2 size-4" />
+                      View Analytics
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Status Indicator */}
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="size-2 rounded-full bg-green-500"></div>
+                  <span>Online</span>
+                </div>
               </div>
-              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 md:hidden">
-                <Search className="size-4" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
-                <Bell className="size-4" />
-              </Button>
             </div>
           </div>
         </header>

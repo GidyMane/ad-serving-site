@@ -297,6 +297,68 @@ export default function EnhancedAnalyticsDashboard() {
         </p>
       </div>
 
+      {/* Delivery Breakdown - Raw Numbers */}
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Email Delivery Breakdown
+          </CardTitle>
+          <CardDescription>
+            Raw numbers from EmailSummary model showing sent vs successfully delivered vs failures
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Sent</div>
+              <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+                {statsData?.totalSent?.toLocaleString() || 0}
+              </div>
+              <div className="text-xs text-blue-600 dark:text-blue-400">From EmailSummary.totalSent</div>
+            </div>
+
+            <div className="space-y-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+              <div className="text-sm font-medium text-green-700 dark:text-green-300">Successfully Sent</div>
+              <div className="text-3xl font-bold text-green-900 dark:text-green-100">
+                {statsData ? (statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)).toLocaleString() : 0}
+              </div>
+              <div className="text-xs text-green-600 dark:text-green-400">
+                {statsData ? ((statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)) / Math.max(1, statsData.totalSent) * 100).toFixed(1) : 0}% delivery rate
+              </div>
+            </div>
+
+            <div className="space-y-2 p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+              <div className="text-sm font-medium text-red-700 dark:text-red-300">Hard Failures</div>
+              <div className="text-3xl font-bold text-red-900 dark:text-red-100">
+                {statsData?.detailedStatus?.hardfail?.toLocaleString() || 0}
+              </div>
+              <div className="text-xs text-red-600 dark:text-red-400">Permanent delivery failures</div>
+            </div>
+
+            <div className="space-y-2 p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
+              <div className="text-sm font-medium text-orange-700 dark:text-orange-300">Soft Failures</div>
+              <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">
+                {statsData?.detailedStatus?.softfail?.toLocaleString() || 0}
+              </div>
+              <div className="text-xs text-orange-600 dark:text-orange-400">Temporary delivery failures</div>
+            </div>
+          </div>
+
+          {statsData && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <div className="text-sm font-medium mb-2">Delivery Summary</div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>• Total Emails Attempted: {statsData.totalSent.toLocaleString()}</div>
+                <div>• Successfully Delivered: {(statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)).toLocaleString()}</div>
+                <div>• Total Failures: {(statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail).toLocaleString()}</div>
+                <div>• Overall Delivery Rate: {((statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)) / Math.max(1, statsData.totalSent) * 100).toFixed(2)}%</div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Quick Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="hover:shadow-md transition-shadow">

@@ -40,6 +40,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs"

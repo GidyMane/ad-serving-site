@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createUrl } from '@/lib/url-utils';
 
 export async function GET(request: NextRequest) {
   // Verify the request is from Vercel Cron or authorized source
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     
     // Call the existing sending-domains API
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-    const apiUrl = `${baseUrl}/api/emailit/sending-domains`;
+    const apiUrl = createUrl(baseUrl, '/api/emailit/sending-domains');
     
     const response = await fetch(apiUrl, {
       method: 'GET',

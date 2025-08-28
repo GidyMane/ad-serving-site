@@ -2,7 +2,8 @@
   "crons": [
     {
       "path": "/api/cron/sync-domains",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 */12 * * *",
+      "comment": "Requires Pro plan for 12-hour frequency. For Hobby plan, use: 0 2 * * * (daily at 2am)"
     }
   ]
 }

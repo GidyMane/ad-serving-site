@@ -1,0 +1,11 @@
+{
+  "comment": "Use this configuration if you're on Vercel Hobby plan",
+  "crons": [
+    {
+      "path": "/api/cron/sync-domains",
+      "schedule": "0 2 * * *",
+      "description": "Daily domain sync at 2am (Hobby plan compatible)"
+    }
+  ],
+  "note": "Hobby plan limitations: once per day, timing variance of ±1 hour"
+}

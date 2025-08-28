@@ -17,13 +17,21 @@ export async function GET() {
 
     // Fetch domains from EmailIt API
     console.log('Fetching domains from EmailIt API...');
+
+    // Create AbortController for 30-second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch('https://api.emailit.com/v1/sending-domains', {
       headers: {
         Authorization: `Bearer ${process.env.EMAILIT_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      timeout: 30000, // 30 second timeout
+      signal: controller.signal,
     });
+
+    // Clear timeout if request completes
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();

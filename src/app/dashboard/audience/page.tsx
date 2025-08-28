@@ -4,10 +4,17 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { 
   Users, 
-  UserCheck, 
-  Inbox,
+  Mail,
   Search,
-  Filter
+  Eye,
+  MousePointer,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Download
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,152 +23,268 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
-interface DomainDistribution {
-  recipient_domain: string;
-  unique_recipients: number;
-  total_emails: number;
-}
-
-interface AudienceOverview {
-  totalRecipients: number;
-  activeRecipients: number;
-  inactiveRecipients: number;
-  bouncedRecipients: number;
-}
-
 interface Recipient {
   email: string;
-  recipient_domain: string;
-  total_emails: number;
-  last_seen: string;
-  status: string;
+  emailDomain: string;
+  totalEmails: number;
+  deliveredEmails: number;
+  failedEmails: number;
+  totalOpens: number;
+  totalClicks: number;
+  openRate: number;
+  clickRate: number;
+  firstEmailSent: string;
+  lastActivity: string;
+}
+
+interface OverviewStats {
+  totalRecipients: number;
+  totalEmailsSent: number;
+  totalOpens: number;
+  totalClicks: number;
+  averageOpenRate: number;
+  averageClickRate: number;
+}
+
+interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasMore: boolean;
+  hasPrevious: boolean;
 }
 
 interface AudienceData {
-  audience: Recipient[];
-  domainDistribution: DomainDistribution[];
-  overview: AudienceOverview;
-  engagement: {
-    openRate: number;
-    clickRate: number;
-  };
+  recipients: Recipient[];
+  overview: OverviewStats;
+  pagination: PaginationData;
   domainName: string;
   isAdmin: boolean;
 }
 
-interface DomainData {
-  userDomain: string;
-}
-
 export default function AudiencePage() {
   const [audienceData, setAudienceData] = useState<AudienceData | null>(null)
-  const [domainData, setDomainData] = useState<DomainData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+    setCurrentPage(1) // Reset to first page when search changes
+  }, [searchTerm])
 
-        // Fetch domain data
-        const domainResponse = await fetch('/api/dashboard/domain')
-        if (domainResponse.ok) {
-          const domainResult = await domainResponse.json()
-          setDomainData(domainResult)
-        }
+  useEffect(() => {
+    fetchAudience()
+  }, [searchTerm, currentPage])
 
-        // Fetch audience data
-        const audienceResponse = await fetch('/api/dashboard/audience')
-        if (!audienceResponse.ok) {
-          throw new Error('Failed to fetch audience data')
-        }
-        const audienceResult = await audienceResponse.json()
-        setAudienceData(audienceResult)
+  const fetchAudience = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-      } catch (err) {
-        console.error('Error fetching audience data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load audience data')
-      } finally {
-        setLoading(false)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      params.append('page', currentPage.toString())
+      params.append('limit', '50')
+
+      const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch audience data')
       }
-    }
+      const result = await response.json()
+      setAudienceData(result)
 
-    fetchData()
-  }, [])
-
-  // Filter recipients based on search term and status
-  const filteredRecipients = React.useMemo(() => {
-    if (!audienceData?.audience) return []
-    
-    let recipients = [...audienceData.audience]
-
-    // Filter by search term
-    if (searchTerm) {
-      recipients = recipients.filter(recipient => 
-        recipient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        recipient.recipient_domain.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      recipients = recipients.filter(recipient => recipient.status === statusFilter)
-    }
-
-    return recipients.sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
-  }, [audienceData?.audience, searchTerm, statusFilter])
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'default'
-      case 'inactive':
-        return 'secondary'
-      case 'bounced':
-        return 'destructive'
-      default:
-        return 'outline'
+    } catch (err) {
+      console.error('Error fetching audience data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load audience data')
+    } finally {
+      setLoading(false)
     }
   }
 
+  const exportAudience = async () => {
+    try {
+      // Fetch all recipients for export (without pagination)
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      params.append('limit', '10000') // Large limit to get all results
+
+      const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch data for export')
+      }
+      const data = await response.json()
+
+      // Create CSV content
+      const csvHeaders = [
+        'Email Address',
+        'Email Domain',
+        'Total Emails',
+        'Delivered Emails',
+        'Failed Emails',
+        'Total Opens',
+        'Total Clicks',
+        'Open Rate (%)',
+        'Click Rate (%)',
+        'First Email Sent',
+        'Latest Activity'
+      ]
+
+      const csvRows = data.recipients.map((recipient: Recipient) => [
+        recipient.email,
+        recipient.emailDomain,
+        recipient.totalEmails,
+        recipient.deliveredEmails,
+        recipient.failedEmails,
+        recipient.totalOpens,
+        recipient.totalClicks,
+        recipient.openRate,
+        recipient.clickRate,
+        new Date(recipient.firstEmailSent).toLocaleDateString(),
+        new Date(recipient.lastActivity).toLocaleDateString()
+      ])
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map((row: (string | number)[]) => row.map((cell: string | number) => `"${cell}"`).join(','))
+      ].join('\n')
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `audience-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (err) {
+      console.error('Error exporting audience data:', err)
+      setError('Failed to export audience data')
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const getEngagementColor = (rate: number) => {
+    if (rate >= 25) return 'text-green-600'
+    if (rate >= 15) return 'text-yellow-600'
+    return 'text-red-600'
+  }
+
   const TableSkeleton = () => (
-    <div className="rounded-lg border overflow-hidden">
-      <div className="overflow-x-auto">
-        <div className="min-w-[700px] grid grid-cols-12 gap-4 p-3 sm:p-4 font-medium text-xs sm:text-sm text-muted-foreground border-b bg-muted/50">
-          <div className="col-span-4">Email Address</div>
-          <div className="col-span-2">Domain</div>
-          <div className="col-span-2">Total Emails</div>
-          <div className="col-span-2">Last Seen</div>
-          <div className="col-span-2">Status</div>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="min-w-[700px] grid grid-cols-12 gap-4 p-3 sm:p-4 border-b last:border-b-0">
-            <div className="col-span-4 flex items-center gap-2">
-              <Skeleton className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg" />
-              <Skeleton className="h-4 w-40" />
+    <div className="space-y-4">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-4 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-            <div className="col-span-2">
-              <Skeleton className="h-4 w-24" />
+            <div className="md:col-span-2 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-            <div className="col-span-2">
-              <Skeleton className="h-4 w-12" />
+            <div className="md:col-span-3 space-y-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-            <div className="col-span-2 space-y-1">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-            <div className="col-span-2">
-              <Skeleton className="h-6 w-16 rounded-full" />
+            <div className="md:col-span-3 space-y-2">
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
+
+  const Pagination = () => {
+    if (!audienceData?.pagination || audienceData.pagination.totalPages <= 1) return null;
+
+    const { page, totalPages, hasPrevious, hasMore } = audienceData.pagination;
+
+    return (
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-muted-foreground">
+          Page {page} of {totalPages} ({audienceData.pagination.total.toLocaleString()} total recipients)
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(page - 1)}
+            disabled={!hasPrevious}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+          
+          {/* Page numbers */}
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page > totalPages - 3) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === page ? "default" : "outline"}
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            {totalPages > 5 && page < totalPages - 3 && (
+              <>
+                <MoreHorizontal className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(totalPages)}
+                >
+                  {totalPages}
+                </Button>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(page + 1)}
+            disabled={!hasMore}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -172,41 +295,23 @@ export default function AudiencePage() {
         </div>
         
         {/* Overview Cards Skeleton */}
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-8" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-6 w-12" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         <div className="flex gap-4">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 flex-1" />
         </div>
 
         <Card>
@@ -231,12 +336,9 @@ export default function AudiencePage() {
             <h2 className="text-2xl font-bold">Failed to Load Audience</h2>
             <p className="text-muted-foreground max-w-md mx-auto">{error}</p>
           </div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
+          <Button onClick={fetchAudience}>
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -248,227 +350,190 @@ export default function AudiencePage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Audience</h1>
         <p className="text-muted-foreground">
-          Manage and analyze your email recipients for {domainData?.userDomain || 'your domain'}
+          All email recipients for {audienceData?.domainName || 'your domain'}
         </p>
       </div>
 
-      {/* Domain Distribution & Overview */}
-      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+      {/* Overview Stats */}
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
         <Card>
-          <CardHeader>
-            <CardTitle>Recipient Domains</CardTitle>
-            <CardDescription>Distribution of recipient email domains</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Recipients</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {audienceData?.domainDistribution && Array.isArray(audienceData.domainDistribution) && audienceData.domainDistribution.length > 0 ? (
-                audienceData.domainDistribution.slice(0, 5).map((domain: DomainDistribution) => (
-                  <div key={domain.recipient_domain} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{domain.recipient_domain}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground w-12">{domain.unique_recipients}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {domain.total_emails} emails
-                      </Badge>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No recipient domains yet</p>
-                </div>
-              )}
-            </div>
+            <div className="text-2xl font-bold">{audienceData?.overview.totalRecipients.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {audienceData?.overview.totalEmailsSent.toLocaleString()} total emails sent
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Audience Overview</CardTitle>
-            <CardDescription>Quick stats about your email recipients</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Engagement</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Recipients</span>
-              <span className="text-2xl font-bold">{audienceData?.overview?.totalRecipients?.toLocaleString() || '0'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Active</span>
-              <span className="text-lg font-semibold text-green-600">{audienceData?.overview?.activeRecipients?.toLocaleString() || '0'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Inactive</span>
-              <span className="text-lg font-semibold text-yellow-600">{audienceData?.overview?.inactiveRecipients?.toLocaleString() || '0'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Bounced</span>
-              <span className="text-lg font-semibold text-red-600">{audienceData?.overview?.bouncedRecipients?.toLocaleString() || '0'}</span>
-            </div>
+          <CardContent>
+            <div className="text-2xl font-bold">{audienceData?.overview.totalOpens.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {audienceData?.overview.totalClicks.toLocaleString()} clicks • {audienceData?.overview.averageOpenRate}% avg open rate
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Performance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{audienceData?.overview.averageClickRate}%</div>
+            <p className="text-xs text-muted-foreground">
+              Average click rate across all recipients
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filter */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Search recipients by email or domain..." 
-            className="pl-8"
+            placeholder="Search recipients by email address..." 
+            className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-border rounded-md bg-background"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="bounced">Bounced</option>
-          </select>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button variant="outline" onClick={exportAudience}>
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>
       </div>
 
-      {/* Audience List */}
+      {/* Recipients List */}
       <Card>
-        <CardHeader>
-          <CardTitle>All Recipients</CardTitle>
-          <CardDescription>
-            {filteredRecipients.length > 0 
-              ? `Showing ${filteredRecipients.length} recipient${filteredRecipients.length !== 1 ? 's' : ''}`
-              : 'No recipients found'
-            }
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>All Recipients</CardTitle>
+            <CardDescription>
+              {audienceData?.recipients.length ? (
+                `Showing ${audienceData.recipients.length} of ${audienceData.pagination.total.toLocaleString()} recipients`
+              ) : (
+                'No recipients found'
+              )}
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredRecipients.length > 0 ? (
-              <>
-                {/* Audience Stats Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{filteredRecipients.length}</div>
-                    <div className="text-sm text-muted-foreground">Total Recipients</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {filteredRecipients.filter((r: Recipient) => r.status === 'active').length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Active</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-yellow-600">
-                      {filteredRecipients.filter((r: Recipient) => r.status === 'inactive').length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Inactive</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
-                      {filteredRecipients.filter((r: Recipient) => r.status === 'bounced').length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Bounced</div>
-                  </div>
-                </div>
-
-                {/* Recipients Table */}
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[700px] grid grid-cols-12 gap-4 p-3 sm:p-4 font-medium text-xs sm:text-sm text-muted-foreground border-b bg-muted/50">
-                      <div className="col-span-4">Email Address</div>
-                      <div className="col-span-2">Domain</div>
-                      <div className="col-span-2">Total Emails</div>
-                      <div className="col-span-2">Last Seen</div>
-                      <div className="col-span-2">Status</div>
-                    </div>
-                    {filteredRecipients.slice(0, 50).map((recipient: Recipient) => (
-                      <div key={recipient.email} className="min-w-[700px] grid grid-cols-12 gap-4 p-3 sm:p-4 border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                        <div className="col-span-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex aspect-square size-6 sm:size-8 items-center justify-center rounded-lg bg-blue-100 flex-shrink-0">
-                              <UserCheck className="size-3 sm:size-4 text-blue-600" />
-                            </div>
+          {audienceData?.recipients.length ? (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                {audienceData.recipients.map((recipient) => (
+                  <div key={recipient.email} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      {/* Recipient Info */}
+                      <div className="md:col-span-4">
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <Mail className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <div className="font-medium text-xs sm:text-sm truncate" title={recipient.email}>{recipient.email}</div>
+                              <p className="font-medium text-sm truncate" title={recipient.email}>
+                                {recipient.email}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                Domain: {recipient.emailDomain}
+                              </p>
                             </div>
                           </div>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="text-xs sm:text-sm">{recipient.recipient_domain}</div>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="text-xs sm:text-sm font-medium">{recipient.total_emails}</div>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="text-xs sm:text-sm">
-                            {new Date(recipient.last_seen).toLocaleDateString()}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground">
-                            {new Date(recipient.last_seen).toLocaleTimeString()}
-                          </div>
-                        </div>
-                        <div className="col-span-2">
-                          <Badge
-                            variant={getStatusVariant(recipient.status)}
-                            className="text-xs"
-                          >
-                            {recipient.status}
-                          </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                {filteredRecipients.length > 50 && (
-                  <div className="text-center text-sm text-muted-foreground">
-                    Showing 50 of {filteredRecipients.length} recipients
-                    <Button variant="outline" size="sm" className="ml-4">
-                      Load More
-                    </Button>
+                      {/* Email Statistics */}
+                      <div className="md:col-span-2">
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm">
+                            {recipient.totalEmails} emails
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="text-green-600">{recipient.deliveredEmails} delivered</span>
+                            {recipient.failedEmails > 0 && (
+                              <span className="text-red-600">{recipient.failedEmails} failed</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Engagement Stats */}
+                      <div className="md:col-span-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-4 text-xs">
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              {recipient.totalOpens} opens
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MousePointer className="h-3 w-3" />
+                              {recipient.totalClicks} clicks
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs">
+                            <span className={`font-medium ${getEngagementColor(recipient.openRate)}`}>
+                              {recipient.openRate}% open rate
+                            </span>
+                            <span className={`font-medium ${getEngagementColor(recipient.clickRate)}`}>
+                              {recipient.clickRate}% click rate
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Timeline */}
+                      <div className="md:col-span-3">
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <div>
+                            First email: {formatDate(recipient.firstEmailSent)}
+                          </div>
+                          <div>
+                            Latest activity: {formatDate(recipient.lastActivity)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">
-                  {searchTerm || statusFilter !== "all" ? "No Recipients Found" : "No Recipients Yet"}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {searchTerm || statusFilter !== "all" 
-                    ? "Try adjusting your search criteria or filters"
-                    : "Recipients will appear here once you start sending emails"
-                  }
-                </p>
-                {(searchTerm || statusFilter !== "all") && (
-                  <div className="mt-4 space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSearchTerm("")}
-                    >
-                      Clear Search
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setStatusFilter("all")}
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
+
+              {/* Pagination */}
+              <Pagination />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">
+                {searchTerm ? "No Recipients Found" : "No Recipients Yet"}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                {searchTerm 
+                  ? "Try adjusting your search terms to find the recipients you're looking for"
+                  : "Recipients will appear here once you start sending emails through your domain"
+                }
+              </p>
+              {searchTerm && (
+                <div className="mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSearchTerm("")}
+                  >
+                    Clear Search
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

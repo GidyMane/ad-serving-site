@@ -29,6 +29,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import CronManagement from "@/components/cron-management"
 
 interface EmailStats {
   totalSent: number;
@@ -766,6 +767,9 @@ export default function DashboardOverview() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Admin Only: Cron Job Management */}
+      {isAdmin && <CronManagement />}
     </div>
   )
 }

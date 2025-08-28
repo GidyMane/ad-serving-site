@@ -1,0 +1,41 @@
+{
+  "vercel_plans": {
+    "hobby_plan": {
+      "limitations": {
+        "cron_frequency": "once_per_day",
+        "timing_precision": "within_1_hour_window",
+        "max_cron_jobs": 2
+      },
+      "recommended_config": {
+        "path": "/api/cron/sync-domains",
+        "schedule": "0 2 * * *",
+        "description": "Daily sync at 2am (with 1-hour variance)"
+      },
+      "suitable_for": "Testing and low-frequency syncing"
+    },
+    "pro_plan": {
+      "benefits": {
+        "cron_frequency": "unlimited",
+        "timing_precision": "exact",
+        "max_cron_jobs": 40
+      },
+      "recommended_config": {
+        "path": "/api/cron/sync-domains",
+        "schedule": "0 */12 * * *",
+        "description": "Every 12 hours at exactly 00:00 and 12:00 UTC"
+      },
+      "suitable_for": "Production use with precise timing requirements"
+    }
+  },
+  "alternative_solutions": {
+    "external_cron": {
+      "services": ["cron-job.org", "easycron.com", "github_actions"],
+      "benefits": ["Free", "Reliable timing", "No Vercel plan dependency"],
+      "webhook_url": "https://your-app.vercel.app/api/cron/sync-domains"
+    },
+    "manual_trigger": {
+      "admin_dashboard": "Manually trigger sync from admin interface",
+      "api_endpoint": "/api/emailit/sending-domains"
+    }
+  }
+}

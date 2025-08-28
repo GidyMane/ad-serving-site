@@ -6,15 +6,15 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
   BarChart3,
-  Bell,
   ChevronDown,
   FileText,
   Home,
   Inbox,
+  LogOut,
   Mail,
-  Search,
+  Moon,
   Send,
-  Settings,
+  Sun,
   Users
 } from 'lucide-react'
 
@@ -40,6 +40,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs"
@@ -82,6 +83,25 @@ const getNavigation = (isAdmin: boolean = false) => [
   }
 ]
 
+// Mobile-aware navigation link component
+function NavLink({ href, children, isActive }: { href: string; children: React.ReactNode; isActive: boolean }) {
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  const handleClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
+  return (
+    <SidebarMenuButton asChild isActive={isActive}>
+      <Link href={href} className="flex items-center gap-2" onClick={handleClick}>
+        {children}
+      </Link>
+    </SidebarMenuButton>
+  )
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -91,6 +111,22 @@ export default function DashboardLayout({
   const [domainData, setDomainData] = useState<DomainData | null>(null)
   const [audienceData, setAudienceData] = useState<AudienceData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Theme toggle functionality
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    setIsDarkMode(isDark)
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [])
+
+  const toggleTheme = () => {
+    const newIsDark = !isDarkMode
+    setIsDarkMode(newIsDark)
+    document.documentElement.classList.toggle('dark', newIsDark)
+    localStorage.setItem('theme', newIsDark ? 'dark' : 'light')
+  }
 
   // Fetch user and domain data for layout
   useEffect(() => {
@@ -150,19 +186,17 @@ export default function DashboardLayout({
                 <SidebarMenu>
                   {section.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
+                      <NavLink
+                        href={item.href}
                         isActive={
-                          item.href === "/dashboard" 
+                          item.href === "/dashboard"
                             ? pathname === "/dashboard"
                             : pathname?.startsWith(item.href)
                         }
                       >
-                        <Link href={item.href} className="flex items-center gap-2">
-                          <item.icon className="size-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -194,16 +228,9 @@ export default function DashboardLayout({
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 size-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Bell className="mr-2 size-4" />
-                    Notifications
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <LogoutLink className="text-red-500">
+                    <LogoutLink className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 font-medium">
+                      <LogOut className="mr-2 size-4" />
                       Sign out
                     </LogoutLink>
                   </DropdownMenuItem>
@@ -219,21 +246,67 @@ export default function DashboardLayout({
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h1 className="font-semibold text-sm sm:text-base truncate">
-              <span className="hidden sm:inline">Dashboard - {domainData?.userDomain || 'Domain'}</span>
-              <span className="sm:hidden">{domainData?.userDomain || 'Dashboard'}</span>
-            </h1>
-            <div className="ml-auto flex items-center gap-1 sm:gap-2">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-8 w-36 lg:w-48 xl:w-64" />
-              </div>
-              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 md:hidden">
-                <Search className="size-4" />
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold text-sm sm:text-base truncate">
+                <span className="hidden sm:inline">Dashboard - {domainData?.userDomain || 'Domain'}</span>
+                <span className="sm:hidden">{domainData?.userDomain || 'Dashboard'}</span>
+              </h1>
+              {domainData?.domain && (
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  {domainData.domain.emailCount > 0
+                    ? `${domainData.domain.emailCount.toLocaleString()} emails sent`
+                    : 'No emails sent yet'
+                  }
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Dark/Light Mode Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9 sm:h-10 sm:w-10"
+                title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? (
+                  <Sun className="size-4" />
+                ) : (
+                  <Moon className="size-4" />
+                )}
               </Button>
-              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
-                <Bell className="size-4" />
-              </Button>
+
+              {/* User Menu with Prominent Logout */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 gap-2">
+                    <div className="flex aspect-square size-6 sm:size-7 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-medium">
+                      {loading ? 'U' : (domainData?.userEmail?.charAt(0).toUpperCase() || 'U')}
+                    </div>
+                    <span className="hidden sm:inline text-sm font-medium">
+                      {loading ? 'User' : (domainData?.userEmail?.split('@')[0] || 'User')}
+                    </span>
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-3 py-2 border-b">
+                    <p className="text-sm font-medium">
+                      {loading ? 'Loading...' : (domainData?.userEmail?.split('@')[0] || 'User')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {loading ? 'user@domain.com' : (domainData?.userEmail || 'user@domain.com')}
+                    </p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <LogoutLink className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 font-medium w-full flex items-center px-3 py-2">
+                      <LogOut className="mr-2 size-4" />
+                      Sign out
+                    </LogoutLink>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>

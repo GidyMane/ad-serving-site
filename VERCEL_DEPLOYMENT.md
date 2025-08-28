@@ -51,10 +51,30 @@ After deployment, update your Kinde app settings:
 - **Allowed callback URLs**: `https://your-app.vercel.app/api/auth/kinde_callback`
 - **Allowed logout redirect URLs**: `https://your-app.vercel.app`
 
+### ⚠️ Cron Job Plan Considerations
+
+**Current Setup**: Domain sync every 12 hours (`0 */12 * * *`)
+
+#### **Vercel Hobby Plan (Free)**
+- ❌ **Issue**: Only allows once-daily cron jobs
+- ❌ **Timing**: ±1 hour variance (not precise)
+- ✅ **Alternative**: Daily sync at 2am (`0 2 * * *`)
+
+#### **Vercel Pro Plan ($20/month)**
+- ✅ **Supports**: 12-hour frequency
+- ✅ **Precise**: Exact timing (00:00 and 12:00 UTC)
+- ✅ **Reliable**: Guaranteed execution
+
+#### **Free External Alternatives**
+- ✅ **GitHub Actions**: Free, precise, reliable
+- ✅ **Cron-job.org**: Free tier, web interface
+- ✅ **No Vercel dependency**: Works with any plan
+
 ### Verify Cron Jobs
 1. Go to Vercel Dashboard → Functions → Cron
-2. You should see: `/api/cron/sync-domains` scheduled for `0 */12 * * *`
-3. Test manually: `https://your-app.vercel.app/api/cron/sync-domains`
+2. **Pro Plan**: You'll see `/api/cron/sync-domains` for `0 */12 * * *`
+3. **Hobby Plan**: Change to `0 2 * * *` or use external service
+4. Test manually: `https://your-app.vercel.app/api/cron/sync-domains`
 
 ## 📊 Cron Job Features
 
@@ -126,11 +146,33 @@ curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
 curl https://your-app.vercel.app/dashboard
 ```
 
-## 📈 Performance
+## 📈 Performance & Plan Recommendations
+
+### For Domain Sync Every 12 Hours
+
+#### **Option 1: Vercel Pro Plan** ($20/month)
+- ✅ Native cron support with precise timing
+- ✅ Up to 40 cron jobs per account
+- ✅ Unlimited invocations
+- ✅ Exact execution at 00:00 and 12:00 UTC
+- **Best for**: Production use with other Pro features needed
+
+#### **Option 2: Vercel Hobby + External Cron** (Free)
+- ✅ Keep Vercel Hobby plan (free)
+- ✅ Use GitHub Actions or cron-job.org
+- ✅ Same reliability and precision
+- ✅ No additional costs
+- **Best for**: Budget-conscious production use
+
+#### **Option 3: Vercel Hobby + Daily Sync** (Free)
+- ✅ Change to once-daily sync (`0 2 * * *`)
+- ⚠️ Less frequent updates (24-hour intervals)
+- ⚠️ Timing variance (±1 hour)
+- **Best for**: Non-critical sync requirements
 
 ### Recommended Vercel Plan
-- **Hobby**: Free tier, perfect for testing
-- **Pro**: Recommended for production use
+- **Hobby**: Free tier, requires external cron for 12-hour sync
+- **Pro**: Native 12-hour cron support, recommended for production
 - **Enterprise**: For high-volume applications
 
 ### Function Limits

@@ -1,0 +1,37 @@
+{
+  "name": "wsdmailer-dashboard",
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "crons": [
+    {
+      "path": "/api/cron/sync-domains",
+      "schedule": "0 */12 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/sync-domains/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/emailit/sending-domains/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}

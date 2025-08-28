@@ -174,7 +174,7 @@ export default function CronManagement() {
               <div className="text-center py-6 text-muted-foreground">
                 <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No active cron jobs found</p>
-                <p className="text-sm">Click "Setup Cron Job" to create one</p>
+                <p className="text-sm">Click &quot;Setup Cron Job&quot; to create one</p>
               </div>
             ) : (
               <div className="space-y-2">

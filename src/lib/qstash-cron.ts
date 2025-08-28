@@ -1,4 +1,5 @@
 import { Client } from '@upstash/qstash';
+import { createUrl } from '@/lib/url-utils';
 
 // QStash client for scheduling cron jobs
 const qstash = new Client({
@@ -13,16 +14,16 @@ export async function setupDomainSyncCron() {
     });
 
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || process.env.APP_URL;
-    
+
     if (!baseUrl) {
       throw new Error('No base URL configured. Set NEXTAUTH_URL, VERCEL_URL, or APP_URL');
     }
 
     // Schedule to run every 12 hours
     const cronExpression = '0 */12 * * *'; // Every 12 hours at minute 0
-    
+
     const schedule = await qstash.schedules.create({
-      destination: `${baseUrl}/api/cron/sync-domains`,
+      destination: createUrl(baseUrl, '/api/cron/sync-domains'),
       cron: cronExpression,
       headers: {
         'Authorization': `Bearer ${process.env.CRON_SECRET || 'default-secret'}`,

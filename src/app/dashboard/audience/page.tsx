@@ -88,6 +88,8 @@ export default function AudiencePage() {
       params.append('page', currentPage.toString())
       params.append('limit', '50')
 
+      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
       const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch audience data')

@@ -9,7 +9,6 @@ import {
   ChevronDown,
   FileText,
   Home,
-  Inbox,
   LogOut,
   Mail,
   Moon,
@@ -277,7 +276,7 @@ export default function DashboardLayout({
                 )}
               </Button>
 
-              {/* User Menu with Prominent Logout */}
+              {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 gap-2">

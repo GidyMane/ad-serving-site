@@ -7,7 +7,6 @@ interface Domain {
   name: string;
 }
 
-// Helper to safely serialize BigInts
 function safeJsonResponse<T>(data: T): NextResponse {
   return NextResponse.json(
     JSON.parse(
@@ -18,21 +17,19 @@ function safeJsonResponse<T>(data: T): NextResponse {
   );
 }
 
-
-// Get user-friendly status label
 function getStatusLabel(status: string): string {
   const statusMap: { [key: string]: string } = {
-    'sent': 'Sent',
-    'delivered': 'Delivered',
-    'failed': 'Failed',
-    'bounced': 'Bounced',
-    'held': 'Held',
-    'delayed': 'Delayed',
-    'rejected': 'Rejected',
-    'queued': 'Queued',
-    'unknown': 'Unknown'
+    sent: "Sent",
+    delivered: "Delivered",
+    failed: "Failed",
+    bounced: "Bounced",
+    held: "Held",
+    delayed: "Delayed",
+    rejected: "Rejected",
+    queued: "Queued",
+    unknown: "Unknown",
   };
-  
+
   return statusMap[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -48,12 +45,26 @@ export async function GET(request: NextRequest) {
     const adminEmails = ["info@websoftdevelopment.com", "muragegideon2000@gmail.com"];
     const isAdmin = adminEmails.includes(user.email);
 
+    const url = new URL(request.url);
+    const selectedDomainId = url.searchParams.get("domainId");
+
     let domains: Domain[] = [];
     let domainFilter: { domainId?: string | { in: string[] } };
 
     if (isAdmin) {
-      domains = await prisma.domain.findMany();
-      domainFilter = { domainId: { in: domains.map((d) => d.id) } };
+      if (selectedDomainId && selectedDomainId !== "all") {
+        const d = await prisma.domain.findUnique({ where: { id: selectedDomainId } });
+        if (d) {
+          domains = [d];
+          domainFilter = { domainId: d.id };
+        } else {
+          domains = await prisma.domain.findMany();
+          domainFilter = { domainId: { in: domains.map((d) => d.id) } };
+        }
+      } else {
+        domains = await prisma.domain.findMany();
+        domainFilter = { domainId: { in: domains.map((d) => d.id) } };
+      }
     } else {
       const userEmailDomain = user.email.split("@")[1];
       if (!userEmailDomain) {
@@ -72,7 +83,6 @@ export async function GET(request: NextRequest) {
       domainFilter = { domainId: domain.id };
     }
 
-    const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
     const statusParam = url.searchParams.get("status") || "all";
     const startDate = url.searchParams.get("startDate");
@@ -81,7 +91,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
-    // Build date filter
     const dateFilter: { gte?: Date; lte?: Date } = {};
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
@@ -91,14 +100,15 @@ export async function GET(request: NextRequest) {
       dateFilter.gte = thirtyDaysAgo;
     }
 
-    // Build search filter
-    const searchFilter = search ? {
-      OR: [
-        { to: { contains: search, mode: 'insensitive' as const } },
-        { from: { contains: search, mode: 'insensitive' as const } },
-        { subject: { contains: search, mode: 'insensitive' as const } }
-      ]
-    } : {};
+    const searchFilter = search
+      ? {
+          OR: [
+            { to: { contains: search, mode: "insensitive" as const } },
+            { from: { contains: search, mode: "insensitive" as const } },
+            { subject: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
 
     const whereClause = {
       ...domainFilter,
@@ -106,58 +116,51 @@ export async function GET(request: NextRequest) {
       ...searchFilter,
     };
 
-    // Fetch all emails with their events
     const emails = await prisma.email.findMany({
       where: whereClause,
       include: {
-        domain: {
-          select: { name: true }
-        },
+        domain: { select: { name: true } },
         events: {
-          orderBy: { occurredAt: 'desc' },
+          orderBy: { occurredAt: "desc" },
           select: {
             type: true,
             status: true,
             occurredAt: true,
             userAgent: true,
-            ipAddress: true
-          }
-        }
+            ipAddress: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    // Process emails and extract latest delivery status
-    let processedEmails = emails.map(email => {
-      // Find the latest delivery event with actual status
-      const deliveryEvent = email.events.find(event =>
-        event.status && (
-          event.type.startsWith('email.delivery.') ||
-          event.type.includes('sent') ||
-          event.type.includes('delivered') ||
-          event.type.includes('failed') ||
-          event.type.includes('bounced')
-        )
+    let processedEmails = emails.map((email) => {
+      const deliveryEvent = email.events.find(
+        (event) =>
+          event.status &&
+          (event.type.startsWith("email.delivery.") ||
+            event.type.includes("sent") ||
+            event.type.includes("delivered") ||
+            event.type.includes("failed") ||
+            event.type.includes("bounced"))
       );
 
       const latestEvent = email.events[0];
-      // Use the actual status from the event, not parsed from type
-      const currentStatus = deliveryEvent?.status || latestEvent?.status || 'unknown';
+      const currentStatus = deliveryEvent?.status || latestEvent?.status || "unknown";
 
-      // Count different event types for analytics
       const eventCounts = {
-        opens: email.events.filter(e => e.type === 'email.loaded').length,
-        clicks: email.events.filter(e => e.type === 'email.link.clicked').length,
-        totalEvents: email.events.length
+        opens: email.events.filter((e) => e.type === "email.loaded").length,
+        clicks: email.events.filter((e) => e.type === "email.link.clicked").length,
+        totalEvents: email.events.length,
       };
 
       return {
         id: email.id,
         emailId: email.emailId,
         messageId: email.messageId,
-        recipient: email.to || 'Unknown Recipient',
-        sender: email.from || 'Unknown Sender',
-        subject: email.subject || 'No Subject',
+        recipient: email.to || "Unknown Recipient",
+        sender: email.from || "Unknown Sender",
+        subject: email.subject || "No Subject",
         domainName: email.domain.name,
         currentStatus: currentStatus,
         statusLabel: getStatusLabel(currentStatus),
@@ -169,18 +172,16 @@ export async function GET(request: NextRequest) {
         userAgent: latestEvent?.userAgent,
         ipAddress: latestEvent?.ipAddress,
         analytics: eventCounts,
-        createdAt: email.createdAt
+        createdAt: email.createdAt,
       };
     });
 
-    // Apply status filter after processing
     if (statusParam !== "all") {
-      processedEmails = processedEmails.filter(email => 
-        email.currentStatus.toLowerCase() === statusParam.toLowerCase()
+      processedEmails = processedEmails.filter(
+        (email) => email.currentStatus.toLowerCase() === statusParam.toLowerCase()
       );
     }
 
-    // Apply pagination
     const totalCount = processedEmails.length;
     const paginatedEmails = processedEmails.slice(offset, offset + limit);
 
@@ -192,12 +193,11 @@ export async function GET(request: NextRequest) {
         limit: limit,
         totalPages: Math.ceil(totalCount / limit),
         hasMore: totalCount > offset + limit,
-        hasPrevious: page > 1
+        hasPrevious: page > 1,
       },
-      domainName: isAdmin ? "All Domains" : domains[0].name,
+      domainName: isAdmin ? (selectedDomainId && selectedDomainId !== "all" && domains[0] ? domains[0].name : "All Domains") : domains[0].name,
       isAdmin,
     });
-
   } catch (error) {
     console.error("Error fetching messages:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { prisma } from "@/lib/prisma";
 
@@ -9,7 +9,7 @@ interface Domain {
   updatedAt: Date;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { getUser } = getKindeServerSession();
     const user = await getUser();
@@ -20,10 +20,25 @@ export async function GET() {
 
     const adminEmails = ["info@websoftdevelopment.com", "muragegideon2000@gmail.com"];
     const isAdmin = adminEmails.includes(user.email);
+
+    const url = new URL(request.url);
+    const selectedDomainId = url.searchParams.get("domainId");
+
     let domains: Domain[] = [];
+    let selectedName: string | null = null;
 
     if (isAdmin) {
-      domains = await prisma.domain.findMany();
+      if (selectedDomainId && selectedDomainId !== "all") {
+        const d = await prisma.domain.findUnique({ where: { id: selectedDomainId } });
+        if (d) {
+          domains = [d];
+          selectedName = d.name;
+        } else {
+          domains = await prisma.domain.findMany();
+        }
+      } else {
+        domains = await prisma.domain.findMany();
+      }
     } else {
       const userEmailDomain = user.email.split("@")[1];
       if (!userEmailDomain) {
@@ -42,6 +57,7 @@ export async function GET() {
       }
 
       domains = [domain];
+      selectedName = domain.name;
     }
 
     if (domains.length === 0) {
@@ -52,14 +68,11 @@ export async function GET() {
     }
 
     const domainIds = domains.map((d) => d.id);
-    const domainFilter = isAdmin
+    const domainFilter = isAdmin && domains.length > 1
       ? { domainId: { in: domainIds } }
       : { domainId: domains[0].id };
 
-    // Summaries from EmailSummary
-    const summaries = await prisma.emailSummary.findMany({
-      where: domainFilter,
-    });
+    const summaries = await prisma.emailSummary.findMany({ where: domainFilter });
 
     const aggregatedSummary = summaries.reduce(
       (acc, s) => ({
@@ -86,14 +99,14 @@ export async function GET() {
       }
     );
 
-    // Delivery metrics
     const totalDelivered = Math.max(
       0,
-      aggregatedSummary.totalSent -
-        (aggregatedSummary.totalHardFail +
-          aggregatedSummary.totalSoftFail +
-          aggregatedSummary.totalBounce +
-          aggregatedSummary.totalError)
+      aggregatedSummary.totalSent - (
+        aggregatedSummary.totalHardFail +
+        aggregatedSummary.totalSoftFail +
+        aggregatedSummary.totalBounce +
+        aggregatedSummary.totalError
+      )
     );
 
     const totalFailed =
@@ -107,8 +120,7 @@ export async function GET() {
         ? Math.min(100, (totalDelivered / aggregatedSummary.totalSent) * 100)
         : 0;
 
-    // Use delivered emails as denominator for more accurate rates (emails that failed can't be opened/clicked)
-    const totalDeliveredForRates = Math.max(1, totalDelivered); // Prevent division by zero
+    const totalDeliveredForRates = Math.max(1, totalDelivered);
 
     const openRate =
       totalDelivered > 0
@@ -120,8 +132,7 @@ export async function GET() {
         ? Math.min(100, (aggregatedSummary.totalClicked / totalDelivered) * 100)
         : 0;
 
-    // Safe SQL cast to int
-    const domainFilterString = isAdmin
+    const domainFilterString = isAdmin && domains.length > 1
       ? `WHERE em."domainId" IN (${domainIds.map((id) => `'${id}'`).join(",")})`
       : `WHERE em."domainId" = '${domains[0].id}'`;
 
@@ -151,7 +162,7 @@ export async function GET() {
       SELECT 
         COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN em."to" END)::int as recipients_who_opened,
         COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN em."to" END)::int as recipients_who_clicked,
-        COUNT(DISTINCT em."to")::int as total_recipients
+        COUNT(DISTINCT CASE WHEN em."to" IS NOT NULL THEN em."to" END)::int as total_recipients
       FROM "EmailEvent" e
       JOIN "Email" em ON e."emailId" = em."id"
       ${domainFilterString}
@@ -165,17 +176,6 @@ export async function GET() {
       }[]
     >(engagementQuery);
 
-    // Engagement metrics
-    const recipientOpenRate =
-      engagement.total_recipients > 0
-        ? Math.min(100, (engagement.recipients_who_opened / engagement.total_recipients) * 100)
-        : 0;
-
-    const recipientClickRate =
-      engagement.total_recipients > 0
-        ? Math.min(100, (engagement.recipients_who_clicked / engagement.total_recipients) * 100)
-        : 0;
-
     return NextResponse.json({
       stats: {
         totalSent: aggregatedSummary.totalSent,
@@ -188,8 +188,8 @@ export async function GET() {
         deliveryRate: Math.round(deliveryRate * 100) / 100,
         openRate: Math.round(openRate * 100) / 100,
         clickRate: Math.round(clickRate * 100) / 100,
-        recipientOpenRate: Math.round(recipientOpenRate * 100) / 100,
-        recipientClickRate: Math.round(recipientClickRate * 100) / 100,
+        recipientOpenRate: Math.round((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
+        recipientClickRate: Math.round((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
 
         recentActivity: {
           emailsLast7Days: recentActivity?.emails_last_7_days || 0,
@@ -216,11 +216,11 @@ export async function GET() {
         recipientsWhoOpened: engagement?.recipients_who_opened || 0,
         recipientsWhoClicked: engagement?.recipients_who_clicked || 0,
         totalRecipients: engagement?.total_recipients || 0,
-        openRate: recipientOpenRate,
-        clickRate: recipientClickRate,
+        openRate: Math.round((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
+        clickRate: Math.round((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
       },
 
-      domainName: isAdmin ? "All Domains" : domains[0].name,
+      domainName: isAdmin ? (selectedDomainId && selectedDomainId !== "all" && selectedName ? selectedName : "All Domains") : (domains[0].name),
       isAdmin,
       domainsCount: isAdmin ? domains.length : 1,
     });

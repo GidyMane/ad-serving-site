@@ -16,13 +16,21 @@ export async function GET(request: NextRequest) {
     
     // Call the existing sending-domains API
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-    const apiUrl = createUrl(baseUrl, '/api/emailit/sending-domains');
-    
+    let apiUrl = createUrl(baseUrl, '/api/emailit/sending-domains');
+
+    // Support Vercel Deployment Protection bypass (Preview/Password-protected)
+    const bypassToken = process.env.VERCEL_PROTECTION_BYPASS || process.env.VERCEL_BYPASS_TOKEN || process.env.VERCEL_AUTOMATION_BYPASS_TOKEN;
+    if (bypassToken) {
+      const u = new URL(apiUrl);
+      u.searchParams.set('x-vercel-set-bypass-cookie', 'true');
+      u.searchParams.set('x-vercel-protection-bypass', bypassToken);
+      apiUrl = u.toString();
+    }
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Include any necessary headers for internal API calls
       },
     });
 

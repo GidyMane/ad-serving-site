@@ -307,7 +307,7 @@ export default function EnhancedAnalyticsDashboard() {
             Email Delivery Breakdown
           </CardTitle>
           <CardDescription>
-            Raw numbers from EmailSummary model showing sent vs successfully delivered vs failures
+           
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -49,14 +49,6 @@ const getNavigation = (isAdmin: boolean = false) => [
       ...(isAdmin ? [{ title: "Sending Domains", tab: "domains", icon: Send }] : []),
     ]
   },
-  {
-    title: "Email Tools",
-    items: [
-      { title: "Inbox", icon: Inbox, url: "#" },
-      { title: "Sent", tab: "messages", icon: Send },
-      { title: "Drafts", icon: FileText, url: "#" },
-    ]
-  }
 ]
 
 interface DomainData {

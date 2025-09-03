@@ -88,6 +88,8 @@ export default function AudiencePage() {
       params.append('page', currentPage.toString())
       params.append('limit', '50')
 
+      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
       const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch audience data')
@@ -110,6 +112,8 @@ export default function AudiencePage() {
       if (searchTerm) params.append('search', searchTerm)
       params.append('limit', '10000') // Large limit to get all results
 
+      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
       const response = await fetch(`/api/dashboard/audience?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch data for export')

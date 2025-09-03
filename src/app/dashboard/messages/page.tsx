@@ -105,6 +105,8 @@ export default function MessagesPage() {
         params.append('startDate', startDate.toISOString())
       }
 
+      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
       const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch messages')
@@ -136,6 +138,8 @@ export default function MessagesPage() {
         params.append('startDate', startDate.toISOString())
       }
 
+      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
       const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch data for export')

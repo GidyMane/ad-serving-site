@@ -13,7 +13,6 @@ interface DomainFilter {
   };
 }
 
-// Helper to safely serialize BigInts without using `any`
 function safeJsonResponse<T>(data: T): NextResponse {
   return NextResponse.json(
     JSON.parse(
@@ -36,12 +35,26 @@ export async function GET(request: NextRequest) {
     const adminEmails = ["info@websoftdevelopment.com", "muragegideon2000@gmail.com"];
     const isAdmin = adminEmails.includes(user.email);
 
+    const url = new URL(request.url);
+    const selectedDomainId = url.searchParams.get("domainId");
+
     let domains: Domain[] = [];
     let domainFilter: DomainFilter;
 
     if (isAdmin) {
-      domains = await prisma.domain.findMany();
-      domainFilter = { email: { domainId: { in: domains.map((d) => d.id) } } };
+      if (selectedDomainId && selectedDomainId !== "all") {
+        const d = await prisma.domain.findUnique({ where: { id: selectedDomainId } });
+        if (d) {
+          domains = [d];
+          domainFilter = { email: { domainId: d.id } };
+        } else {
+          domains = await prisma.domain.findMany();
+          domainFilter = { email: { domainId: { in: domains.map((d) => d.id) } } };
+        }
+      } else {
+        domains = await prisma.domain.findMany();
+        domainFilter = { email: { domainId: { in: domains.map((d) => d.id) } } };
+      }
     } else {
       const userEmailDomain = user.email.split("@")[1];
       if (!userEmailDomain) {
@@ -60,7 +73,6 @@ export async function GET(request: NextRequest) {
       domainFilter = { email: { domainId: domain.id } };
     }
 
-    const url = new URL(request.url);
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
     const eventType = url.searchParams.get("eventType");
@@ -82,12 +94,9 @@ export async function GET(request: NextRequest) {
       ...(eventType && eventType !== "all" ? { type: eventType } : {}),
     };
 
-    // ✅ fetch paginated events
     const events = await prisma.emailEvent.findMany({
       where: whereClause,
-      include: {
-        email: { select: { to: true, from: true, subject: true } },
-      },
+      include: { email: { select: { to: true, from: true, subject: true } } },
       orderBy: { occurredAt: "desc" },
       take: limit,
       skip: offset,
@@ -95,14 +104,12 @@ export async function GET(request: NextRequest) {
 
     const totalCount = await prisma.emailEvent.count({ where: whereClause });
 
-    // charts (30d)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const domainIds = domains.map((d) => d.id);
 
-    // ✅ aggregate using relations
-    const volumeData = isAdmin
+    const volumeData = isAdmin && domains.length > 1
       ? await prisma.$queryRawUnsafe(`
         SELECT
                to_char(DATE(e."occurredAt"), 'YYYY-MM-DD') as date,
@@ -134,7 +141,7 @@ export async function GET(request: NextRequest) {
         ORDER BY DATE(e."occurredAt")
       `, domains[0].id, thirtyDaysAgo);
 
-    const engagementData = isAdmin
+    const engagementData = isAdmin && domains.length > 1
       ? await prisma.$queryRawUnsafe(`
         SELECT EXTRACT(DOW FROM e."occurredAt") as day_of_week,
                TO_CHAR(e."occurredAt", 'Day') as day_name,
@@ -184,7 +191,7 @@ export async function GET(request: NextRequest) {
         volume: volumeData,
         engagement: engagementData,
       },
-      domainName: isAdmin ? "All Domains" : domains[0].name,
+      domainName: isAdmin ? (selectedDomainId && selectedDomainId !== "all" && domains[0] ? domains[0].name : "All Domains") : domains[0].name,
       isAdmin,
     });
   } catch (error) {

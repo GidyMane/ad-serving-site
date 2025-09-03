@@ -48,15 +48,6 @@ const navigation = [
     ]
   },
   {
-    title: "Email Tools",
-    items: [
-      { title: "Inbox", icon: Inbox, url: "#", badge: "3" },
-      { title: "Sent", icon: Send, url: "#" },
-      { title: "Drafts", icon: FileText, url: "#" },
-      // { title: "Automation", icon: Zap, url: "#" },
-    ]
-  },
-  {
     title: "Reports",
     items: [
       { title: "Performance", icon: TrendingUp, url: "#" },

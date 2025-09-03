@@ -9,7 +9,6 @@ import {
   ChevronDown,
   FileText,
   Home,
-  Inbox,
   LogOut,
   Mail,
   Moon,
@@ -56,6 +55,8 @@ interface DomainData {
   };
   userEmail: string;
   userDomain: string;
+  isAdmin?: boolean;
+  allDomains?: { id: string; name: string; emailCount: number; summary: unknown }[];
 }
 
 interface AudienceData {
@@ -71,14 +72,6 @@ const getNavigation = (isAdmin: boolean = false) => [
       { title: "Messages", href: "/dashboard/messages", icon: Send },
       { title: "Audience", href: "/dashboard/audience", icon: Users },
       ...(isAdmin ? [{ title: "Domains", href: "/dashboard/domains", icon: Send }] : []),
-    ]
-  },
-  {
-    title: "Email Tools",
-    items: [
-      { title: "Campaigns", href: "#", icon: Mail },
-      { title: "Templates", href: "#", icon: FileText },
-      { title: "Inbox", href: "#", icon: Inbox },
     ]
   }
 ]
@@ -112,6 +105,8 @@ export default function DashboardLayout({
   const [audienceData, setAudienceData] = useState<AudienceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null)
+  const [selectedDomainName, setSelectedDomainName] = useState<string | null>(null)
 
   // Theme toggle functionality
   useEffect(() => {
@@ -119,6 +114,14 @@ export default function DashboardLayout({
     const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
     setIsDarkMode(isDark)
     document.documentElement.classList.toggle('dark', isDark)
+  }, [])
+
+  // Load selected domain from localStorage
+  useEffect(() => {
+    const id = localStorage.getItem('selectedDomainId')
+    const name = localStorage.getItem('selectedDomainName')
+    setSelectedDomainId(id)
+    setSelectedDomainName(name)
   }, [])
 
   const toggleTheme = () => {
@@ -132,15 +135,17 @@ export default function DashboardLayout({
   useEffect(() => {
     const fetchLayoutData = async () => {
       try {
-        // Fetch domain data for user info
-        const domainResponse = await fetch('/api/dashboard/domain')
+        const qs = selectedDomainId && selectedDomainId !== 'all' ? `?domainId=${encodeURIComponent(selectedDomainId)}` : ''
+        const [domainResponse, audienceResponse] = await Promise.all([
+          fetch(`/api/dashboard/domain${qs}`),
+          fetch('/api/dashboard/audience')
+        ])
+
         if (domainResponse.ok) {
           const domainResult = await domainResponse.json()
           setDomainData(domainResult)
         }
 
-        // Fetch audience data to check admin status
-        const audienceResponse = await fetch('/api/dashboard/audience')
         if (audienceResponse.ok) {
           const audienceResult = await audienceResponse.json()
           setAudienceData(audienceResult)
@@ -153,7 +158,7 @@ export default function DashboardLayout({
     }
 
     fetchLayoutData()
-  }, [])
+  }, [selectedDomainId])
 
   const navigation = getNavigation(audienceData?.isAdmin || false)
 
@@ -248,12 +253,12 @@ export default function DashboardLayout({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
               <h1 className="font-semibold text-sm sm:text-base truncate">
-                <span className="hidden sm:inline">Dashboard - {domainData?.userDomain || 'Domain'}</span>
-                <span className="sm:hidden">{domainData?.userDomain || 'Dashboard'}</span>
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Dashboard</span>
               </h1>
               {domainData?.domain && (
                 <p className="text-xs text-muted-foreground hidden sm:block">
-                  {domainData.domain.emailCount > 0
+                  {(selectedDomainName || domainData?.userDomain || 'All Domains')}: {domainData.domain.emailCount > 0
                     ? `${domainData.domain.emailCount.toLocaleString()} emails sent`
                     : 'No emails sent yet'
                   }
@@ -262,6 +267,30 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Admin Domain Switcher */}
+              {audienceData?.isAdmin && domainData?.allDomains && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 gap-2">
+                      <Send className="size-4" />
+                      <span className="hidden sm:inline text-sm font-medium">{selectedDomainName || domainData?.userDomain || 'All Domains'}</span>
+                      <ChevronDown className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem onSelect={() => { localStorage.setItem('selectedDomainId', 'all'); localStorage.setItem('selectedDomainName', 'All Domains'); window.location.reload(); }}>
+                      All Domains
+                    </DropdownMenuItem>
+                    <Separator className="my-1" />
+                    {domainData.allDomains.map((d) => (
+                      <DropdownMenuItem key={d.id} onSelect={() => { localStorage.setItem('selectedDomainId', d.id); localStorage.setItem('selectedDomainName', d.name); window.location.reload(); }}>
+                        {d.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               {/* Dark/Light Mode Toggle */}
               <Button
                 variant="outline"
@@ -277,7 +306,7 @@ export default function DashboardLayout({
                 )}
               </Button>
 
-              {/* User Menu with Prominent Logout */}
+              {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 gap-2">

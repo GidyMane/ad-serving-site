@@ -162,10 +162,12 @@ export default function EnhancedAnalyticsDashboard() {
         setLoading(true)
         setError(null)
 
+        const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+        const qs = selectedId && selectedId !== 'all' ? `?domainId=${encodeURIComponent(selectedId)}` : ''
         const [statsResponse, eventsResponse, domainResponse] = await Promise.all([
-          fetch('/api/dashboard/stats'),
-          fetch('/api/dashboard/events'),
-          fetch('/api/dashboard/domain')
+          fetch(`/api/dashboard/stats${qs}`),
+          fetch(`/api/dashboard/events${qs}`),
+          fetch(`/api/dashboard/domain${qs}`)
         ])
 
         if (statsResponse.ok) {

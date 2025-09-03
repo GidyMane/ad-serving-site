@@ -118,10 +118,12 @@ export default function DashboardOverview() {
         setError(null)
 
         // Fetch all data in parallel
+        const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
+        const qs = selectedId && selectedId !== 'all' ? `?domainId=${encodeURIComponent(selectedId)}` : ''
         const [domainResponse, statsResponse, audienceResponse] = await Promise.all([
-          fetch('/api/dashboard/domain'),
-          fetch('/api/dashboard/stats'),
-          fetch('/api/dashboard/audience')
+          fetch(`/api/dashboard/domain${qs}`),
+          fetch(`/api/dashboard/stats${qs}`),
+          fetch(`/api/dashboard/audience${qs}`)
         ])
 
         if (!domainResponse.ok) {

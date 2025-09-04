@@ -176,6 +176,14 @@ export async function GET(request: NextRequest) {
       }[]
     >(engagementQuery);
 
+    const sentEventsWhere = (isAdmin && domains.length > 1)
+      ? { type: 'email.delivery.sent', email: { domainId: { in: domainIds } } }
+      : { type: 'email.delivery.sent', email: { domainId: domains[0].id } };
+
+    const sentEventsCount = await prisma.emailEvent.count({
+      where: sentEventsWhere,
+    });
+
     return NextResponse.json({
       stats: {
         totalSent: aggregatedSummary.totalSent,
@@ -200,7 +208,7 @@ export async function GET(request: NextRequest) {
         },
 
         detailedStatus: {
-          sent: totalDelivered,
+          sent: sentEventsCount,
           hardfail: aggregatedSummary.totalHardFail,
           softfail: aggregatedSummary.totalSoftFail,
           bounce: aggregatedSummary.totalBounce,

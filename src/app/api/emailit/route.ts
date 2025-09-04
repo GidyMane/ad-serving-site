@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     // The endpoint you want QStash to forward messages to
     // const targetUrl = "http://localhost:3000/api/test"; // change to your deployed URL
-    const targetUrl = "https://emailit-tracker.vercel.app/api/test";
+    const targetUrl = "https://wsdmailer.websoftdevelopment.com/api/test";
 
     // Send to QStash
     const res = await axios.post(

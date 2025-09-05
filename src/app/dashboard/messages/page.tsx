@@ -432,19 +432,25 @@ export default function MessagesPage() {
           />
         </div>
         
-        <select 
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-input rounded-md bg-background text-sm"
         >
           <option value="all">All Status</option>
-          <option value="delivered">Delivered</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-          <option value="bounced">Bounced</option>
-          <option value="held">Held</option>
-          <option value="delayed">Delayed</option>
-          <option value="rejected">Rejected</option>
+          <optgroup label="Delivery">
+            <option value="email.delivery.sent">Sent</option>
+            <option value="email.delivery.hardfail">Hard Fail</option>
+            <option value="email.delivery.softfail">Soft Fail</option>
+            <option value="email.delivery.bounce">Bounced</option>
+            <option value="email.delivery.error">Error</option>
+            <option value="email.delivery.held">Held</option>
+            <option value="email.delivery.delayed">Delayed</option>
+          </optgroup>
+          <optgroup label="Engagement">
+            <option value="email.loaded">Opened</option>
+            <option value="email.link.clicked">Clicked</option>
+          </optgroup>
         </select>
 
         <select 

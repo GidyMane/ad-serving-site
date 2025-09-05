@@ -114,8 +114,8 @@ export async function GET(request: NextRequest) {
         SELECT
                to_char(DATE(e."occurredAt"), 'YYYY-MM-DD') as date,
                COUNT(*) as total,
-               COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
-               COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,
+               COUNT(CASE WHEN e.type = 'email.delivery.sent' THEN 1 END) as delivered,
+               COUNT(CASE WHEN e.type IN ('email.delivery.hardfail','email.delivery.softfail','email.delivery.bounce','email.delivery.error') THEN 1 END) as failed,
                COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
                COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e
@@ -129,8 +129,8 @@ export async function GET(request: NextRequest) {
         SELECT
                to_char(DATE(e."occurredAt"), 'YYYY-MM-DD') as date,
                COUNT(*) as total,
-               COUNT(CASE WHEN e.status = 'delivered' THEN 1 END) as delivered,
-               COUNT(CASE WHEN e.status IN ('failed','bounced') THEN 1 END) as failed,
+               COUNT(CASE WHEN e.type = 'email.delivery.sent' THEN 1 END) as delivered,
+               COUNT(CASE WHEN e.type IN ('email.delivery.hardfail','email.delivery.softfail','email.delivery.bounce','email.delivery.error') THEN 1 END) as failed,
                COUNT(CASE WHEN e.type = 'email.loaded' THEN 1 END) as opens,
                COUNT(CASE WHEN e.type = 'email.link.clicked' THEN 1 END) as clicks
         FROM "EmailEvent" e

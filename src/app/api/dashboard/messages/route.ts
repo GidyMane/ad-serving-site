@@ -159,8 +159,11 @@ export async function GET(request: NextRequest) {
         totalEvents: email.events.length,
       };
 
-      let statusType = latestDelivery?.type as string | undefined;
+      let statusType = (latestDelivery?.type || latestEvent?.type) as string | undefined;
       if (!statusType && (eventCounts.opens > 0 || eventCounts.clicks > 0)) {
+        statusType = 'email.loaded';
+      }
+      if (!statusType && email.sentAt) {
         statusType = 'email.delivery.sent';
       }
 

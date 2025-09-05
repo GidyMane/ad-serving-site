@@ -118,8 +118,8 @@ export async function GET(request: NextRequest) {
             COUNT(DISTINCT em."id") as total_emails,
             COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN e."id" END) as total_opens,
             COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN e."id" END) as total_clicks,
-            COUNT(DISTINCT CASE WHEN e."status" = 'delivered' THEN em."id" END) as delivered_emails,
-            COUNT(DISTINCT CASE WHEN e."status" IN ('failed', 'bounced') THEN em."id" END) as failed_emails,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.delivery.sent' THEN em."id" END) as delivered_emails,
+            COUNT(DISTINCT CASE WHEN e."type" IN ('email.delivery.hardfail','email.delivery.softfail','email.delivery.bounce','email.delivery.error') THEN em."id" END) as failed_emails,
             MAX(e."occurredAt") as last_activity,
             MIN(em."sentAt") as first_email_sent
           FROM "Email" em
@@ -137,8 +137,8 @@ export async function GET(request: NextRequest) {
             COUNT(DISTINCT em."id") as total_emails,
             COUNT(DISTINCT CASE WHEN e."type" = 'email.loaded' THEN e."id" END) as total_opens,
             COUNT(DISTINCT CASE WHEN e."type" = 'email.link.clicked' THEN e."id" END) as total_clicks,
-            COUNT(DISTINCT CASE WHEN e."status" = 'delivered' THEN em."id" END) as delivered_emails,
-            COUNT(DISTINCT CASE WHEN e."status" IN ('failed', 'bounced') THEN em."id" END) as failed_emails,
+            COUNT(DISTINCT CASE WHEN e."type" = 'email.delivery.sent' THEN em."id" END) as delivered_emails,
+            COUNT(DISTINCT CASE WHEN e."type" IN ('email.delivery.hardfail','email.delivery.softfail','email.delivery.bounce','email.delivery.error') THEN em."id" END) as failed_emails,
             MAX(e."occurredAt") as last_activity,
             MIN(em."sentAt") as first_email_sent
           FROM "Email" em

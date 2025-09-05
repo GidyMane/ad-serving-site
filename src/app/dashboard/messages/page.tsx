@@ -38,6 +38,8 @@ interface EmailMessage {
   domainName: string;
   currentStatus: string;
   statusLabel: string;
+  statusType?: string;
+  statusDescription?: string;
   sentDate: string;
   firstOpenDate?: string;
   firstClickDate?: string;

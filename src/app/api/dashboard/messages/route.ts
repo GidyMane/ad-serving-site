@@ -112,8 +112,16 @@ export async function GET(request: NextRequest) {
 
     const whereClause = {
       ...domainFilter,
-      sentAt: Object.keys(dateFilter).length > 0 ? dateFilter : undefined,
       ...searchFilter,
+      ...(Object.keys(dateFilter).length > 0
+        ? {
+            OR: [
+              { sentAt: dateFilter },
+              { createdAt: dateFilter },
+              { events: { some: { occurredAt: dateFilter } } },
+            ],
+          }
+        : {}),
     };
 
     const emails = await prisma.email.findMany({
@@ -135,22 +143,24 @@ export async function GET(request: NextRequest) {
     });
 
     let processedEmails = emails.map((email) => {
-      const deliveryEvent = email.events.find(
-        (event) =>
-          event.status &&
-          (event.type.startsWith("email.delivery.") ||
-            event.type.includes("sent") ||
-            event.type.includes("delivered") ||
-            event.type.includes("failed") ||
-            event.type.includes("bounced"))
-      );
-
       const latestEvent = email.events[0];
-      const currentStatus = deliveryEvent?.status || latestEvent?.status || "unknown";
+      const latestDelivery = email.events.find((e) => e.type.startsWith("email.delivery."));
+
+      const typeToStatus: { [key: string]: string } = {
+        'email.delivery.sent': 'delivered',
+        'email.delivery.hardfail': 'failed',
+        'email.delivery.softfail': 'failed',
+        'email.delivery.bounce': 'bounced',
+        'email.delivery.error': 'failed',
+        'email.delivery.held': 'held',
+        'email.delivery.delayed': 'delayed',
+      };
+
+      const currentStatus = latestDelivery ? (typeToStatus[latestDelivery.type] || 'unknown') : 'unknown';
 
       const eventCounts = {
-        opens: email.events.filter((e) => e.type === "email.loaded").length,
-        clicks: email.events.filter((e) => e.type === "email.link.clicked").length,
+        opens: email.events.filter((e) => e.type === 'email.loaded').length,
+        clicks: email.events.filter((e) => e.type === 'email.link.clicked').length,
         totalEvents: email.events.length,
       };
 
@@ -158,11 +168,11 @@ export async function GET(request: NextRequest) {
         id: email.id,
         emailId: email.emailId,
         messageId: email.messageId,
-        recipient: email.to || "Unknown Recipient",
-        sender: email.from || "Unknown Sender",
-        subject: email.subject || "No Subject",
+        recipient: email.to || 'Unknown Recipient',
+        sender: email.from || 'Unknown Sender',
+        subject: email.subject || 'No Subject',
         domainName: email.domain.name,
-        currentStatus: currentStatus,
+        currentStatus,
         statusLabel: getStatusLabel(currentStatus),
         sentDate: email.sentAt || email.createdAt,
         firstOpenDate: email.firstOpenAt,
@@ -176,10 +186,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    if (statusParam !== "all") {
-      processedEmails = processedEmails.filter(
-        (email) => email.currentStatus.toLowerCase() === statusParam.toLowerCase()
-      );
+    if (statusParam !== 'all') {
+      processedEmails = processedEmails.filter((email) => {
+        const s = email.currentStatus.toLowerCase();
+        if (statusParam === 'delivered' || statusParam === 'sent') return s === 'delivered' || s === 'sent';
+        return s === statusParam.toLowerCase();
+      });
     }
 
     const totalCount = processedEmails.length;

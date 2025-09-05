@@ -17,20 +17,26 @@ function safeJsonResponse<T>(data: T): NextResponse {
   );
 }
 
-function getStatusLabel(status: string): string {
-  const statusMap: { [key: string]: string } = {
-    sent: "Sent",
-    delivered: "Delivered",
-    failed: "Failed",
-    bounced: "Bounced",
-    held: "Held",
-    delayed: "Delayed",
-    rejected: "Rejected",
-    queued: "Queued",
-    unknown: "Unknown",
-  };
+const STATUS_META: Record<string, { label: string; description: string }> = {
+  'email.delivery.sent': { label: 'Sent', description: 'Email has been sent to the recipient.' },
+  'email.delivery.hardfail': { label: 'Hard Fail', description: 'Email could not be delivered to the recipient.' },
+  'email.delivery.softfail': { label: 'Soft Fail', description: 'Email could not be temporarily delivered and will be retried later.' },
+  'email.delivery.bounce': { label: 'Bounced', description: 'Email could not be delivered.' },
+  'email.delivery.error': { label: 'Error', description: 'System error has occurred while trying to send this email. Will retry later.' },
+  'email.delivery.held': { label: 'Held', description: 'Email has been held; your account could be blocked, limited or under review.' },
+  'email.delivery.delayed': { label: 'Delayed', description: 'Email has been delayed, likely due to your rate limit.' },
+  'email.loaded': { label: 'Opened', description: 'Email has been loaded.' },
+  'email.link.clicked': { label: 'Clicked', description: 'Email link has been clicked.' },
+};
 
-  return statusMap[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1);
+function getLabelForType(type?: string): string {
+  if (!type) return 'Unknown';
+  return STATUS_META[type]?.label || 'Unknown';
+}
+
+function getDescriptionForType(type?: string): string {
+  if (!type) return 'No delivery status recorded yet.';
+  return STATUS_META[type]?.description || 'No delivery status recorded yet.';
 }
 
 export async function GET(request: NextRequest) {
@@ -113,6 +119,7 @@ export async function GET(request: NextRequest) {
     const whereClause = {
       ...domainFilter,
       ...searchFilter,
+      ...(statusParam !== 'all' ? { events: { some: { type: statusParam } } } : {}),
       ...(Object.keys(dateFilter).length > 0
         ? {
             OR: [
@@ -144,25 +151,18 @@ export async function GET(request: NextRequest) {
 
     let processedEmails = emails.map((email) => {
       const latestEvent = email.events[0];
-      const latestDelivery = email.events.find((e) => e.type.startsWith("email.delivery."));
-
-      const typeToStatus: { [key: string]: string } = {
-        'email.delivery.sent': 'delivered',
-        'email.delivery.hardfail': 'failed',
-        'email.delivery.softfail': 'failed',
-        'email.delivery.bounce': 'bounced',
-        'email.delivery.error': 'failed',
-        'email.delivery.held': 'held',
-        'email.delivery.delayed': 'delayed',
-      };
-
-      const currentStatus = latestDelivery ? (typeToStatus[latestDelivery.type] || 'unknown') : 'unknown';
+      const latestDelivery = email.events.find((e) => e.type.startsWith('email.delivery.'));
 
       const eventCounts = {
         opens: email.events.filter((e) => e.type === 'email.loaded').length,
         clicks: email.events.filter((e) => e.type === 'email.link.clicked').length,
         totalEvents: email.events.length,
       };
+
+      let statusType = latestDelivery?.type as string | undefined;
+      if (!statusType && (eventCounts.opens > 0 || eventCounts.clicks > 0)) {
+        statusType = 'email.delivery.sent';
+      }
 
       return {
         id: email.id,
@@ -172,8 +172,10 @@ export async function GET(request: NextRequest) {
         sender: email.from || 'Unknown Sender',
         subject: email.subject || 'No Subject',
         domainName: email.domain.name,
-        currentStatus,
-        statusLabel: getStatusLabel(currentStatus),
+        currentStatus: getLabelForType(statusType),
+        statusLabel: getLabelForType(statusType),
+        statusType: statusType || 'unknown',
+        statusDescription: getDescriptionForType(statusType),
         sentDate: email.sentAt || email.createdAt,
         firstOpenDate: email.firstOpenAt,
         firstClickDate: email.firstClickAt,
@@ -187,11 +189,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (statusParam !== 'all') {
-      processedEmails = processedEmails.filter((email) => {
-        const s = email.currentStatus.toLowerCase();
-        if (statusParam === 'delivered' || statusParam === 'sent') return s === 'delivered' || s === 'sent';
-        return s === statusParam.toLowerCase();
-      });
+      processedEmails = processedEmails.filter((email) => email.statusType === statusParam);
     }
 
     const totalCount = processedEmails.length;

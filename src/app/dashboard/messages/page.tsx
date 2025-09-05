@@ -38,6 +38,8 @@ interface EmailMessage {
   domainName: string;
   currentStatus: string;
   statusLabel: string;
+  statusType?: string;
+  statusDescription?: string;
   sentDate: string;
   firstOpenDate?: string;
   firstClickDate?: string;
@@ -199,37 +201,41 @@ export default function MessagesPage() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'delivered':
-      case 'sent':
+  const getStatusIcon = (type?: string) => {
+    switch (type) {
+      case 'email.delivery.sent':
         return <CheckCircle className="h-3 w-3" />
-      case 'failed':
-      case 'bounced':
-      case 'rejected':
+      case 'email.delivery.hardfail':
+      case 'email.delivery.softfail':
+      case 'email.delivery.error':
+      case 'email.delivery.bounce':
         return <XCircle className="h-3 w-3" />
-      case 'held':
-      case 'delayed':
-      case 'queued':
+      case 'email.delivery.held':
+      case 'email.delivery.delayed':
         return <Clock className="h-3 w-3" />
+      case 'email.link.clicked':
+      case 'email.loaded':
+        return <Activity className="h-3 w-3" />
       default:
         return <Minus className="h-3 w-3" />
     }
   }
 
-  const getStatusVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'delivered':
-      case 'sent':
+  const getStatusVariant = (type?: string) => {
+    switch (type) {
+      case 'email.delivery.sent':
         return 'default'
-      case 'failed':
-      case 'bounced':
-      case 'rejected':
+      case 'email.delivery.hardfail':
+      case 'email.delivery.softfail':
+      case 'email.delivery.error':
+      case 'email.delivery.bounce':
         return 'destructive'
-      case 'held':
-      case 'delayed':
-      case 'queued':
+      case 'email.delivery.held':
+      case 'email.delivery.delayed':
         return 'secondary'
+      case 'email.link.clicked':
+      case 'email.loaded':
+        return 'outline'
       default:
         return 'outline'
     }
@@ -430,19 +436,25 @@ export default function MessagesPage() {
           />
         </div>
         
-        <select 
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-input rounded-md bg-background text-sm"
         >
           <option value="all">All Status</option>
-          <option value="delivered">Delivered</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-          <option value="bounced">Bounced</option>
-          <option value="held">Held</option>
-          <option value="delayed">Delayed</option>
-          <option value="rejected">Rejected</option>
+          <optgroup label="Delivery">
+            <option value="email.delivery.sent">Sent</option>
+            <option value="email.delivery.hardfail">Hard Fail</option>
+            <option value="email.delivery.softfail">Soft Fail</option>
+            <option value="email.delivery.bounce">Bounced</option>
+            <option value="email.delivery.error">Error</option>
+            <option value="email.delivery.held">Held</option>
+            <option value="email.delivery.delayed">Delayed</option>
+          </optgroup>
+          <optgroup label="Engagement">
+            <option value="email.loaded">Opened</option>
+            <option value="email.link.clicked">Clicked</option>
+          </optgroup>
         </select>
 
         <select 
@@ -533,10 +545,15 @@ export default function MessagesPage() {
 
                       {/* Status */}
                       <div className="md:col-span-2">
-                        <Badge variant={getStatusVariant(message.currentStatus)} className="text-xs">
-                          {getStatusIcon(message.currentStatus)}
+                        <Badge variant={getStatusVariant(message.statusType)} className="text-xs">
+                          {getStatusIcon(message.statusType)}
                           <span className="ml-1">{message.statusLabel}</span>
                         </Badge>
+                        {message.statusDescription && (
+                          <div className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                            {message.statusDescription}
+                          </div>
+                        )}
                       </div>
 
                       {/* Dates and Location */}

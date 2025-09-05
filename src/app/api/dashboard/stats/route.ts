@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
       ? { domainId: { in: domainIds } }
       : { domainId: domains[0].id };
 
+    // Aggregated engagement from summary (unique first opens/clicks per email)
     const summaries = await prisma.emailSummary.findMany({ where: domainFilter });
-
     const aggregatedSummary = summaries.reduce(
       (acc, s) => ({
         totalSent: acc.totalSent + (s?.totalSent || 0),
@@ -99,38 +99,52 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const totalDelivered = Math.max(
-      0,
-      aggregatedSummary.totalSent - (
-        aggregatedSummary.totalHardFail +
-        aggregatedSummary.totalSoftFail +
-        aggregatedSummary.totalBounce +
-        aggregatedSummary.totalError
-      )
-    );
+    // Use EmailEvent.type for delivery status breakdown
+    const typeScope = (isAdmin && domains.length > 1)
+      ? { email: { domainId: { in: domainIds } } }
+      : { email: { domainId: domains[0].id } };
 
-    const totalFailed =
-      aggregatedSummary.totalHardFail +
-      aggregatedSummary.totalSoftFail +
-      aggregatedSummary.totalBounce +
-      aggregatedSummary.totalError;
+    const deliveryTypes = [
+      'email.delivery.sent',
+      'email.delivery.hardfail',
+      'email.delivery.softfail',
+      'email.delivery.bounce',
+      'email.delivery.error',
+      'email.delivery.held',
+      'email.delivery.delayed',
+    ];
 
-    const deliveryRate =
-      aggregatedSummary.totalSent > 0
-        ? Math.min(100, (totalDelivered / aggregatedSummary.totalSent) * 100)
-        : 0;
+    const grouped = await prisma.emailEvent.groupBy({
+      by: ['type'],
+      _count: { _all: true },
+      where: {
+        ...typeScope,
+        type: { in: deliveryTypes },
+      },
+    });
 
-    const totalDeliveredForRates = Math.max(1, totalDelivered);
+    const counts: Record<string, number> = Object.fromEntries(deliveryTypes.map((t) => [t, 0]));
+    type GroupedTypeCount = { type: string; _count: { _all: number } };
+    const groupedCounts = grouped as GroupedTypeCount[];
+    for (const g of groupedCounts) {
+      counts[g.type] = g._count._all;
+    }
 
-    const openRate =
-      totalDelivered > 0
-        ? Math.min(100, (aggregatedSummary.totalLoaded / totalDelivered) * 100)
-        : 0;
+    const sentCount = counts['email.delivery.sent'] || 0;
+    const hardfailCount = counts['email.delivery.hardfail'] || 0;
+    const softfailCount = counts['email.delivery.softfail'] || 0;
+    const bounceCount = counts['email.delivery.bounce'] || 0;
+    const errorCount = counts['email.delivery.error'] || 0;
+    const heldCount = counts['email.delivery.held'] || 0;
+    const delayedCount = counts['email.delivery.delayed'] || 0;
 
-    const clickRate =
-      totalDelivered > 0
-        ? Math.min(100, (aggregatedSummary.totalClicked / totalDelivered) * 100)
-        : 0;
+    const failedCount = hardfailCount + softfailCount + bounceCount + errorCount;
+    const pendingCount = heldCount + delayedCount;
+    const deliveryTotal = sentCount + failedCount + pendingCount;
+
+    const deliveryRate = deliveryTotal > 0 ? Math.min(100, (sentCount / deliveryTotal) * 100) : 0;
+    const openRate = sentCount > 0 ? Math.min(100, (aggregatedSummary.totalLoaded / sentCount) * 100) : 0;
+    const clickRate = sentCount > 0 ? Math.min(100, (aggregatedSummary.totalClicked / sentCount) * 100) : 0;
 
     const domainFilterString = isAdmin && domains.length > 1
       ? `WHERE em."domainId" IN (${domainIds.map((id) => `'${id}'`).join(",")})`
@@ -148,15 +162,13 @@ export async function GET(request: NextRequest) {
       ${domainFilterString}
     `;
 
-    const [recentActivity] = await prisma.$queryRawUnsafe<
-      {
-        emails_last_7_days: number;
-        emails_last_24_hours: number;
-        opens_last_7_days: number;
-        clicks_last_7_days: number;
-        unique_recipients: number;
-      }[]
-    >(recentActivityQuery);
+    const [recentActivity] = await prisma.$queryRawUnsafe<{
+      emails_last_7_days: number;
+      emails_last_24_hours: number;
+      opens_last_7_days: number;
+      clicks_last_7_days: number;
+      unique_recipients: number;
+    }[]>(recentActivityQuery);
 
     const engagementQuery = `
       SELECT 
@@ -168,36 +180,26 @@ export async function GET(request: NextRequest) {
       ${domainFilterString}
     `;
 
-    const [engagement] = await prisma.$queryRawUnsafe<
-      {
-        recipients_who_opened: number;
-        recipients_who_clicked: number;
-        total_recipients: number;
-      }[]
-    >(engagementQuery);
-
-    const sentEventsWhere = (isAdmin && domains.length > 1)
-      ? { type: 'email.delivery.sent', email: { domainId: { in: domainIds } } }
-      : { type: 'email.delivery.sent', email: { domainId: domains[0].id } };
-
-    const sentEventsCount = await prisma.emailEvent.count({
-      where: sentEventsWhere,
-    });
+    const [engagement] = await prisma.$queryRawUnsafe<{
+      recipients_who_opened: number;
+      recipients_who_clicked: number;
+      total_recipients: number;
+    }[]>(engagementQuery);
 
     return NextResponse.json({
       stats: {
-        totalSent: aggregatedSummary.totalSent,
-        delivered: totalDelivered,
-        failed: totalFailed,
+        totalSent: sentCount,
+        delivered: sentCount,
+        failed: failedCount,
         opens: aggregatedSummary.totalLoaded,
         clicks: aggregatedSummary.totalClicked,
-        pending: aggregatedSummary.totalHeld + aggregatedSummary.totalDelayed,
+        pending: pendingCount,
 
         deliveryRate: Math.round(deliveryRate * 100) / 100,
         openRate: Math.round(openRate * 100) / 100,
         clickRate: Math.round(clickRate * 100) / 100,
-        recipientOpenRate: Math.round((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
-        recipientClickRate: Math.round((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
+        recipientOpenRate: Math.round(((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0)) * 10000) / 100,
+        recipientClickRate: Math.round(((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0)) * 10000) / 100,
 
         recentActivity: {
           emailsLast7Days: recentActivity?.emails_last_7_days || 0,
@@ -208,13 +210,13 @@ export async function GET(request: NextRequest) {
         },
 
         detailedStatus: {
-          sent: sentEventsCount,
-          hardfail: aggregatedSummary.totalHardFail,
-          softfail: aggregatedSummary.totalSoftFail,
-          bounce: aggregatedSummary.totalBounce,
-          error: aggregatedSummary.totalError,
-          held: aggregatedSummary.totalHeld,
-          delayed: aggregatedSummary.totalDelayed,
+          sent: sentCount,
+          hardfail: hardfailCount,
+          softfail: softfailCount,
+          bounce: bounceCount,
+          error: errorCount,
+          held: heldCount,
+          delayed: delayedCount,
         },
       },
 
@@ -224,8 +226,8 @@ export async function GET(request: NextRequest) {
         recipientsWhoOpened: engagement?.recipients_who_opened || 0,
         recipientsWhoClicked: engagement?.recipients_who_clicked || 0,
         totalRecipients: engagement?.total_recipients || 0,
-        openRate: Math.round((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
-        clickRate: Math.round((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0) * 10000) / 100,
+        openRate: Math.round(((engagement?.recipients_who_opened || 0) / Math.max(1, engagement?.total_recipients || 0)) * 10000) / 100,
+        clickRate: Math.round(((engagement?.recipients_who_clicked || 0) / Math.max(1, engagement?.total_recipients || 0)) * 10000) / 100,
       },
 
       domainName: isAdmin ? (selectedDomainId && selectedDomainId !== "all" && selectedName ? selectedName : "All Domains") : (domains[0].name),

@@ -197,30 +197,42 @@ export default function EnhancedAnalyticsDashboard() {
   }, [])
 
   // Prepare pie chart data with safety checks to prevent percentages over 100%
+  const attempted = statsData ? (
+    statsData.detailedStatus.sent +
+    statsData.detailedStatus.hardfail +
+    statsData.detailedStatus.softfail +
+    statsData.detailedStatus.bounce +
+    statsData.detailedStatus.error +
+    statsData.detailedStatus.held +
+    statsData.detailedStatus.delayed
+  ) : 0;
+
   const deliveryStatusPieData: PieData[] = statsData ? [
-    { name: 'Delivered', value: Math.min(statsData.delivered, statsData.totalSent), color: STATUS_COLORS.delivered },
-    { name: 'Failed', value: Math.min(statsData.failed, statsData.totalSent), color: STATUS_COLORS.failed },
-    { name: 'Pending', value: Math.min(statsData.pending, statsData.totalSent), color: STATUS_COLORS.pending }
+    { name: 'Delivered', value: statsData.delivered, color: STATUS_COLORS.delivered },
+    { name: 'Failed', value: statsData.failed, color: STATUS_COLORS.failed },
+    { name: 'Pending', value: statsData.pending, color: STATUS_COLORS.pending }
   ].filter(item => item.value > 0) : []
 
   const detailedStatusPieData: PieData[] = statsData ? [
-    { name: 'Delivered', value: Math.min(statsData.detailedStatus.sent, statsData.totalSent), color: STATUS_COLORS.delivered },
-    { name: 'Hard Fail', value: Math.min(statsData.detailedStatus.hardfail, statsData.totalSent), color: STATUS_COLORS.hardfail },
-    { name: 'Soft Fail', value: Math.min(statsData.detailedStatus.softfail, statsData.totalSent), color: STATUS_COLORS.softfail },
-    { name: 'Bounced', value: Math.min(statsData.detailedStatus.bounce, statsData.totalSent), color: STATUS_COLORS.bounce },
-    { name: 'Error', value: Math.min(statsData.detailedStatus.error, statsData.totalSent), color: STATUS_COLORS.error },
-    { name: 'Held', value: Math.min(statsData.detailedStatus.held, statsData.totalSent), color: STATUS_COLORS.held },
-    { name: 'Delayed', value: Math.min(statsData.detailedStatus.delayed, statsData.totalSent), color: STATUS_COLORS.delayed }
+    { name: 'Delivered', value: statsData.detailedStatus.sent, color: STATUS_COLORS.delivered },
+    { name: 'Hard Fail', value: statsData.detailedStatus.hardfail, color: STATUS_COLORS.hardfail },
+    { name: 'Soft Fail', value: statsData.detailedStatus.softfail, color: STATUS_COLORS.softfail },
+    { name: 'Bounced', value: statsData.detailedStatus.bounce, color: STATUS_COLORS.bounce },
+    { name: 'Error', value: statsData.detailedStatus.error, color: STATUS_COLORS.error },
+    { name: 'Held', value: statsData.detailedStatus.held, color: STATUS_COLORS.held },
+    { name: 'Delayed', value: statsData.detailedStatus.delayed, color: STATUS_COLORS.delayed }
   ].filter(item => item.value > 0) : []
 
+  const engagementBase = statsData ? Math.max(0, statsData.delivered) : 0;
   const engagementPieData: PieData[] = statsData ? [
-    { name: 'Opened', value: Math.min(statsData.opens, statsData.totalSent), color: ENGAGEMENT_COLORS.opened },
-    { name: 'Not Opened', value: Math.max(0, statsData.totalSent - Math.min(statsData.opens, statsData.totalSent)), color: ENGAGEMENT_COLORS.unopened }
+    { name: 'Opened', value: Math.min(statsData.opens, engagementBase), color: ENGAGEMENT_COLORS.opened },
+    { name: 'Not Opened', value: Math.max(0, engagementBase - Math.min(statsData.opens, engagementBase)), color: ENGAGEMENT_COLORS.unopened }
   ].filter(item => item.value > 0) : []
 
+  const clicksBase = statsData ? Math.max(0, statsData.delivered) : 0;
   const clicksPieData: PieData[] = statsData ? [
-    { name: 'Clicked', value: Math.min(statsData.clicks, statsData.totalSent), color: ENGAGEMENT_COLORS.clicked },
-    { name: 'Not Clicked', value: Math.max(0, statsData.totalSent - Math.min(statsData.clicks, statsData.totalSent)), color: ENGAGEMENT_COLORS.notClicked }
+    { name: 'Clicked', value: Math.min(statsData.clicks, clicksBase), color: ENGAGEMENT_COLORS.clicked },
+    { name: 'Not Clicked', value: Math.max(0, clicksBase - Math.min(statsData.clicks, clicksBase)), color: ENGAGEMENT_COLORS.notClicked }
   ].filter(item => item.value > 0) : []
 
   const ChartSkeleton = () => (
@@ -313,20 +325,20 @@ export default function EnhancedAnalyticsDashboard() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-              <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Sent</div>
+              <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Delivered (Sent)</div>
               <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                {statsData?.totalSent?.toLocaleString() || 0}
+                {statsData?.delivered?.toLocaleString() || 0}
               </div>
-              <div className="text-xs text-blue-600 dark:text-blue-400">From EmailSummary.totalSent</div>
+              <div className="text-xs text-blue-600 dark:text-blue-400">From EmailEvent type &apos;email.delivery.sent&apos;</div>
             </div>
 
             <div className="space-y-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-              <div className="text-sm font-medium text-green-700 dark:text-green-300">Successfully Sent</div>
+              <div className="text-sm font-medium text-green-700 dark:text-green-300">Successfully Delivered</div>
               <div className="text-3xl font-bold text-green-900 dark:text-green-100">
-                {statsData ? (statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)).toLocaleString() : 0}
+                {statsData?.detailedStatus?.sent?.toLocaleString() || 0}
               </div>
               <div className="text-xs text-green-600 dark:text-green-400">
-                {statsData ? ((statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)) / Math.max(1, statsData.totalSent) * 100).toFixed(1) : 0}% delivery rate
+                {statsData ? ((statsData.detailedStatus.sent / Math.max(1, attempted)) * 100).toFixed(1) : 0}% delivery rate
               </div>
             </div>
 
@@ -351,10 +363,10 @@ export default function EnhancedAnalyticsDashboard() {
             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <div className="text-sm font-medium mb-2">Delivery Summary</div>
               <div className="text-xs text-muted-foreground space-y-1">
-                <div>• Total Emails Attempted: {statsData.totalSent.toLocaleString()}</div>
-                <div>• Successfully Delivered: {(statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)).toLocaleString()}</div>
-                <div>• Total Failures: {(statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail).toLocaleString()}</div>
-                <div>• Overall Delivery Rate: {((statsData.totalSent - (statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail)) / Math.max(1, statsData.totalSent) * 100).toFixed(2)}%</div>
+                <div>• Total Emails Attempted: {attempted.toLocaleString()}</div>
+                <div>• Successfully Delivered: {statsData.detailedStatus.sent.toLocaleString()}</div>
+                <div>• Total Failures: {(statsData.detailedStatus.hardfail + statsData.detailedStatus.softfail + statsData.detailedStatus.bounce + statsData.detailedStatus.error).toLocaleString()}</div>
+                <div>• Overall Delivery Rate: {((statsData.detailedStatus.sent / Math.max(1, attempted)) * 100).toFixed(2)}%</div>
               </div>
             </div>
           )}

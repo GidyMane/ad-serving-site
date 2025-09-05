@@ -124,7 +124,11 @@ export async function GET(request: NextRequest) {
     });
 
     const counts: Record<string, number> = Object.fromEntries(deliveryTypes.map((t) => [t, 0]));
-    for (const g of grouped) counts[g.type as string] = (g as any)._count._all as number;
+    type GroupedTypeCount = { type: string; _count: { _all: number } };
+    const groupedCounts = grouped as GroupedTypeCount[];
+    for (const g of groupedCounts) {
+      counts[g.type] = g._count._all;
+    }
 
     const sentCount = counts['email.delivery.sent'] || 0;
     const hardfailCount = counts['email.delivery.hardfail'] || 0;

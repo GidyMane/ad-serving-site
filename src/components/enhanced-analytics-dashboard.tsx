@@ -329,7 +329,7 @@ export default function EnhancedAnalyticsDashboard() {
               <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
                 {statsData?.delivered?.toLocaleString() || 0}
               </div>
-              <div className="text-xs text-blue-600 dark:text-blue-400">From EmailEvent type 'email.delivery.sent'</div>
+              <div className="text-xs text-blue-600 dark:text-blue-400">From EmailEvent type &apos;email.delivery.sent&apos;</div>
             </div>
 
             <div className="space-y-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">

@@ -22,7 +22,7 @@ export async function GET() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch('https://wsdmailer.websoftdevelopment.com/v1/sending-domains', {
+    const response = await fetch('https://api.emailit.com/v1/sending-domains', {
       headers: {
         Authorization: `Bearer ${process.env.EMAILIT_API_KEY}`,
         'Content-Type': 'application/json',

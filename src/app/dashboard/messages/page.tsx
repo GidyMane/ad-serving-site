@@ -84,6 +84,8 @@ export default function MessagesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isSearching, setIsSearching] = useState(false)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const requestCacheRef = useRef<Map<string, { data: MessagesData; timestamp: number }>>(new Map())
 
   // Debounce search input
   useEffect(() => {

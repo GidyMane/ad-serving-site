@@ -53,42 +53,6 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const selectedDomainId = url.searchParams.get("domainId");
-
-    let domains: Domain[] = [];
-    let domainFilter: { domainId?: string | { in: string[] } };
-
-    if (isAdmin) {
-      if (selectedDomainId && selectedDomainId !== "all") {
-        const d = await prisma.domain.findUnique({ where: { id: selectedDomainId } });
-        if (d) {
-          domains = [d];
-          domainFilter = { domainId: d.id };
-        } else {
-          domains = await prisma.domain.findMany();
-          domainFilter = { domainId: { in: domains.map((d) => d.id) } };
-        }
-      } else {
-        domains = await prisma.domain.findMany();
-        domainFilter = { domainId: { in: domains.map((d) => d.id) } };
-      }
-    } else {
-      const userEmailDomain = user.email.split("@")[1];
-      if (!userEmailDomain) {
-        return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
-      }
-
-      const domain = await prisma.domain.findUnique({ where: { name: userEmailDomain } });
-      if (!domain) {
-        return NextResponse.json(
-          { error: "Domain not found", message: "No email data exists for your domain" },
-          { status: 404 }
-        );
-      }
-
-      domains = [domain];
-      domainFilter = { domainId: domain.id };
-    }
-
     const search = url.searchParams.get("search") || "";
     const statusParam = url.searchParams.get("status") || "all";
     const startDate = url.searchParams.get("startDate");
@@ -97,6 +61,49 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
+    // Get domain filter efficiently
+    let domainIds: string[] = [];
+    let domainName = "All Domains";
+
+    if (isAdmin) {
+      if (selectedDomainId && selectedDomainId !== "all") {
+        const d = await prisma.domain.findUnique({
+          where: { id: selectedDomainId },
+          select: { id: true, name: true }
+        });
+        if (d) {
+          domainIds = [d.id];
+          domainName = d.name;
+        } else {
+          const domains = await prisma.domain.findMany({ select: { id: true } });
+          domainIds = domains.map((d) => d.id);
+        }
+      } else {
+        const domains = await prisma.domain.findMany({ select: { id: true } });
+        domainIds = domains.map((d) => d.id);
+      }
+    } else {
+      const userEmailDomain = user.email.split("@")[1];
+      if (!userEmailDomain) {
+        return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+      }
+
+      const domain = await prisma.domain.findUnique({
+        where: { name: userEmailDomain },
+        select: { id: true, name: true }
+      });
+      if (!domain) {
+        return NextResponse.json(
+          { error: "Domain not found", message: "No email data exists for your domain" },
+          { status: 404 }
+        );
+      }
+
+      domainIds = [domain.id];
+      domainName = domain.name;
+    }
+
+    // Build date filter
     const dateFilter: { gte?: Date; lte?: Date } = {};
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
@@ -106,6 +113,7 @@ export async function GET(request: NextRequest) {
       dateFilter.gte = thirtyDaysAgo;
     }
 
+    // Build search filter
     const searchFilter = search
       ? {
           OR: [
@@ -116,47 +124,58 @@ export async function GET(request: NextRequest) {
         }
       : {};
 
+    // Build WHERE clause with optimized structure
     const whereClause = {
-      ...domainFilter,
+      domainId: { in: domainIds },
       ...searchFilter,
-      ...(statusParam !== 'all' ? { events: { some: { type: statusParam } } } : {}),
-      ...(Object.keys(dateFilter).length > 0
-        ? {
-            OR: [
-              { sentAt: dateFilter },
-              { createdAt: dateFilter },
-              { events: { some: { occurredAt: dateFilter } } },
-            ],
-          }
-        : {}),
+      sentAt: dateFilter.gte || dateFilter.lte ? dateFilter : undefined,
     };
 
-    const emails = await prisma.email.findMany({
-      where: whereClause,
-      include: {
-        domain: { select: { name: true } },
-        events: {
-          orderBy: { occurredAt: "desc" },
-          select: {
-            type: true,
-            status: true,
-            occurredAt: true,
-            userAgent: true,
-            ipAddress: true,
+    // Fetch total count and paginated data in parallel
+    const [totalCount, emails] = await Promise.all([
+      prisma.email.count({ where: whereClause }),
+      prisma.email.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          emailId: true,
+          messageId: true,
+          to: true,
+          from: true,
+          subject: true,
+          sentAt: true,
+          createdAt: true,
+          firstOpenAt: true,
+          firstClickAt: true,
+          domainId: true,
+          domain: { select: { name: true } },
+          events: {
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              occurredAt: true,
+              userAgent: true,
+              ipAddress: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: limit,
+      }),
+    ]);
 
+    // Process emails with status filtering
     let processedEmails = emails.map((email) => {
-      const latestEvent = email.events[0];
-      const latestDelivery = email.events.find((e) => e.type.startsWith('email.delivery.'));
+      const events = email.events || [];
+      const latestEvent = events.length > 0 ? events[0] : null;
+      const latestDelivery = events.find((e) => e.type.startsWith('email.delivery.'));
 
       const eventCounts = {
-        opens: email.events.filter((e) => e.type === 'email.loaded').length,
-        clicks: email.events.filter((e) => e.type === 'email.link.clicked').length,
-        totalEvents: email.events.length,
+        opens: events.filter((e) => e.type === 'email.loaded').length,
+        clicks: events.filter((e) => e.type === 'email.link.clicked').length,
+        totalEvents: events.length,
       };
 
       let statusType = (latestDelivery?.type || latestEvent?.type) as string | undefined;
@@ -191,15 +210,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Filter by status if specified
     if (statusParam !== 'all') {
       processedEmails = processedEmails.filter((email) => email.statusType === statusParam);
     }
 
-    const totalCount = processedEmails.length;
-    const paginatedEmails = processedEmails.slice(offset, offset + limit);
-
     return safeJsonResponse({
-      messages: paginatedEmails,
+      messages: processedEmails,
       pagination: {
         total: totalCount,
         page: page,
@@ -208,7 +225,7 @@ export async function GET(request: NextRequest) {
         hasMore: totalCount > offset + limit,
         hasPrevious: page > 1,
       },
-      domainName: isAdmin ? (selectedDomainId && selectedDomainId !== "all" && domains[0] ? domains[0].name : "All Domains") : domains[0].name,
+      domainName,
       isAdmin,
     });
   } catch (error) {

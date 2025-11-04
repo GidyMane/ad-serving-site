@@ -105,6 +105,15 @@ export default function MessagesPage() {
     }
   }, [searchInput])
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
+
   useEffect(() => {
     setCurrentPage(1) // Reset to first page when filters change
   }, [statusFilter, dateRange])

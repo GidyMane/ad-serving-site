@@ -54,6 +54,14 @@ model Email {
   events    EmailEvent[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+
+  @@index([domainId])
+  @@index([domainId, sentAt])
+  @@index([domainId, createdAt])
+  @@index([to])
+  @@index([from])
+  @@index([subject])
+  @@index([sentAt])
 }
 
 model EmailEvent {

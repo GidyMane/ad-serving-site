@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Mail,
   Search,
@@ -19,7 +19,9 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  X
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,14 +77,46 @@ export default function MessagesPage() {
   const [messagesData, setMessagesData] = useState<MessagesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchInput, setSearchInput] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateRange, setDateRange] = useState("30")
   const [currentPage, setCurrentPage] = useState(1)
+  const [isSearching, setIsSearching] = useState(false)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const requestCacheRef = useRef<Map<string, { data: MessagesData; timestamp: number }>>(new Map())
+
+  // Debounce search input
+  useEffect(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      setSearchTerm(searchInput)
+      setCurrentPage(1)
+    }, 300)
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+    }
+  }, [searchInput])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setCurrentPage(1) // Reset to first page when filters change
-  }, [searchTerm, statusFilter, dateRange])
+  }, [statusFilter, dateRange])
 
   useEffect(() => {
     fetchMessages()
@@ -90,16 +124,13 @@ export default function MessagesPage() {
 
   const fetchMessages = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
+      // Build cache key
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
       if (statusFilter !== 'all') params.append('status', statusFilter)
       params.append('page', currentPage.toString())
       params.append('limit', '20')
 
-      // Set date range
       if (dateRange !== 'all') {
         const days = parseInt(dateRange)
         const startDate = new Date()
@@ -109,46 +140,75 @@ export default function MessagesPage() {
 
       const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
       if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
-      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
+
+      const cacheKey = params.toString()
+
+      // Check cache (5 minute TTL)
+      const cached = requestCacheRef.current.get(cacheKey)
+      if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+        setMessagesData(cached.data)
+        setLoading(false)
+        setIsSearching(false)
+        return
+      }
+
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      abortControllerRef.current = new AbortController()
+      setIsSearching(true)
+      if (!messagesData) {
+        setLoading(true)
+      }
+      setError(null)
+
+      const response = await fetch(`/api/dashboard/messages?${cacheKey}`, {
+        signal: abortControllerRef.current.signal,
+      })
+
       if (!response.ok) {
         throw new Error('Failed to fetch messages')
       }
-      const result = await response.json()
-      setMessagesData(result)
 
+      const result = await response.json()
+
+      // Cache the result
+      requestCacheRef.current.set(cacheKey, {
+        data: result,
+        timestamp: Date.now(),
+      })
+
+      // Clean old cache entries (keep only 10 most recent)
+      if (requestCacheRef.current.size > 10) {
+        const entries = Array.from(requestCacheRef.current.entries())
+          .sort((a, b) => b[1].timestamp - a[1].timestamp)
+          .slice(0, 10)
+        requestCacheRef.current = new Map(entries)
+      }
+
+      setMessagesData(result)
     } catch (err) {
-      console.error('Error fetching messages:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load messages')
+      // Don't show error if request was aborted (user made a new request)
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error fetching messages:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load messages')
+      }
     } finally {
       setLoading(false)
+      setIsSearching(false)
     }
   }
 
   const exportMessages = async () => {
     try {
-      // Fetch all messages for export (without pagination)
-      const params = new URLSearchParams()
-      if (searchTerm) params.append('search', searchTerm)
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-      params.append('limit', '10000') // Large limit to get all results
-
-      // Set date range
-      if (dateRange !== 'all') {
-        const days = parseInt(dateRange)
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - days)
-        params.append('startDate', startDate.toISOString())
+      if (!messagesData?.messages.length) {
+        setError('No messages to export')
+        return
       }
 
-      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
-      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
-      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch data for export')
-      }
-      const data = await response.json()
-
-      // Create CSV content
+      // Create CSV content from current data (respecting filters)
       const csvHeaders = [
         'Message ID',
         'Recipient',
@@ -164,7 +224,7 @@ export default function MessagesPage() {
         'Total Events'
       ]
 
-      const csvRows = data.messages.map((message: EmailMessage) => [
+      const csvRows = messagesData.messages.map((message: EmailMessage) => [
         message.messageId,
         message.recipient,
         message.sender,
@@ -195,6 +255,8 @@ export default function MessagesPage() {
       link.click()
       document.body.removeChild(link)
 
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(url), 100)
     } catch (err) {
       console.error('Error exporting messages data:', err)
       setError('Failed to export messages data')
@@ -427,13 +489,26 @@ export default function MessagesPage() {
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Search by recipient, sender, or subject..." 
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          {isSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground animate-spin" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          )}
+          <Input
+            placeholder="Search by recipient, sender, or subject..."
+            className="pl-10 pr-10"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         
         <select
@@ -473,7 +548,10 @@ export default function MessagesPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Messages</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Recent Messages
+              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </CardTitle>
             <CardDescription>
               {messagesData?.messages.length ? (
                 `Showing ${messagesData.messages.length} of ${messagesData.pagination.total.toLocaleString()} messages`
@@ -483,7 +561,7 @@ export default function MessagesPage() {
             </CardDescription>
           </div>
           {messagesData?.messages.length ? (
-            <Button variant="outline" size="sm" onClick={exportMessages}>
+            <Button variant="outline" size="sm" onClick={exportMessages} disabled={isSearching}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -492,7 +570,7 @@ export default function MessagesPage() {
         <CardContent>
           {messagesData?.messages.length ? (
             <div className="space-y-6">
-              <div className="space-y-4">
+              <div className={`space-y-4 ${isSearching ? 'opacity-75' : 'opacity-100'} transition-opacity`}>
                 {messagesData.messages.map((message) => (
                   <div key={message.messageId} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -589,21 +667,21 @@ export default function MessagesPage() {
             <div className="text-center py-12">
               <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">
-                {searchTerm || statusFilter !== "all" ? "No Messages Found" : "No Messages Yet"}
+                {searchTerm || statusFilter !== "all" ? "No Messages Found" : loading ? "Loading Messages..." : "No Messages Yet"}
               </h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                {searchTerm || statusFilter !== "all" 
+                {searchTerm || statusFilter !== "all"
                   ? "Try adjusting your search terms or filters to find the messages you're looking for"
                   : "Messages will appear here once you start sending emails through your domain"
                 }
               </p>
-              {(searchTerm || statusFilter !== "all" || dateRange !== "30") && (
+              {(searchInput || statusFilter !== "all" || dateRange !== "30") && (
                 <div className="mt-4 space-x-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
-                      setSearchTerm("")
+                      setSearchInput("")
                       setStatusFilter("all")
                       setDateRange("30")
                     }}

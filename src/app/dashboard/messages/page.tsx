@@ -513,7 +513,10 @@ export default function MessagesPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Messages</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Recent Messages
+              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </CardTitle>
             <CardDescription>
               {messagesData?.messages.length ? (
                 `Showing ${messagesData.messages.length} of ${messagesData.pagination.total.toLocaleString()} messages`
@@ -523,7 +526,7 @@ export default function MessagesPage() {
             </CardDescription>
           </div>
           {messagesData?.messages.length ? (
-            <Button variant="outline" size="sm" onClick={exportMessages}>
+            <Button variant="outline" size="sm" onClick={exportMessages} disabled={isSearching}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -532,7 +535,7 @@ export default function MessagesPage() {
         <CardContent>
           {messagesData?.messages.length ? (
             <div className="space-y-6">
-              <div className="space-y-4">
+              <div className={`space-y-4 ${isSearching ? 'opacity-75' : 'opacity-100'} transition-opacity`}>
                 {messagesData.messages.map((message) => (
                   <div key={message.messageId} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -629,21 +632,21 @@ export default function MessagesPage() {
             <div className="text-center py-12">
               <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">
-                {searchTerm || statusFilter !== "all" ? "No Messages Found" : "No Messages Yet"}
+                {searchTerm || statusFilter !== "all" ? "No Messages Found" : loading ? "Loading Messages..." : "No Messages Yet"}
               </h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                {searchTerm || statusFilter !== "all" 
+                {searchTerm || statusFilter !== "all"
                   ? "Try adjusting your search terms or filters to find the messages you're looking for"
                   : "Messages will appear here once you start sending emails through your domain"
                 }
               </p>
-              {(searchTerm || statusFilter !== "all" || dateRange !== "30") && (
+              {(searchInput || statusFilter !== "all" || dateRange !== "30") && (
                 <div className="mt-4 space-x-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
-                      setSearchTerm("")
+                      setSearchInput("")
                       setStatusFilter("all")
                       setDateRange("30")
                     }}

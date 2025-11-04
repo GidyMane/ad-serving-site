@@ -115,19 +115,13 @@ export default function MessagesPage() {
 
   const fetchMessages = async () => {
     try {
-      setIsSearching(true)
-      if (!messagesData) {
-        setLoading(true)
-      }
-      setError(null)
-
+      // Build cache key
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
       if (statusFilter !== 'all') params.append('status', statusFilter)
       params.append('page', currentPage.toString())
       params.append('limit', '20')
 
-      // Set date range
       if (dateRange !== 'all') {
         const days = parseInt(dateRange)
         const startDate = new Date()
@@ -137,16 +131,61 @@ export default function MessagesPage() {
 
       const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
       if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
-      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
+
+      const cacheKey = params.toString()
+
+      // Check cache (5 minute TTL)
+      const cached = requestCacheRef.current.get(cacheKey)
+      if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+        setMessagesData(cached.data)
+        setLoading(false)
+        setIsSearching(false)
+        return
+      }
+
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      abortControllerRef.current = new AbortController()
+      setIsSearching(true)
+      if (!messagesData) {
+        setLoading(true)
+      }
+      setError(null)
+
+      const response = await fetch(`/api/dashboard/messages?${cacheKey}`, {
+        signal: abortControllerRef.current.signal,
+      })
+
       if (!response.ok) {
         throw new Error('Failed to fetch messages')
       }
-      const result = await response.json()
-      setMessagesData(result)
 
+      const result = await response.json()
+
+      // Cache the result
+      requestCacheRef.current.set(cacheKey, {
+        data: result,
+        timestamp: Date.now(),
+      })
+
+      // Clean old cache entries (keep only 10 most recent)
+      if (requestCacheRef.current.size > 10) {
+        const entries = Array.from(requestCacheRef.current.entries())
+          .sort((a, b) => b[1].timestamp - a[1].timestamp)
+          .slice(0, 10)
+        requestCacheRef.current = new Map(entries)
+      }
+
+      setMessagesData(result)
     } catch (err) {
-      console.error('Error fetching messages:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load messages')
+      // Don't show error if request was aborted (user made a new request)
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error fetching messages:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load messages')
+      }
     } finally {
       setLoading(false)
       setIsSearching(false)

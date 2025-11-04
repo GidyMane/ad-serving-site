@@ -113,7 +113,10 @@ export default function MessagesPage() {
 
   const fetchMessages = async () => {
     try {
-      setLoading(true)
+      setIsSearching(true)
+      if (!messagesData) {
+        setLoading(true)
+      }
       setError(null)
 
       const params = new URLSearchParams()
@@ -144,6 +147,7 @@ export default function MessagesPage() {
       setError(err instanceof Error ? err.message : 'Failed to load messages')
     } finally {
       setLoading(false)
+      setIsSearching(false)
     }
   }
 

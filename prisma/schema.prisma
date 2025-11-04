@@ -36,9 +36,9 @@ model Domain {
 
 model Email {
   id         String       @id @default(uuid())
-  emailId    Int          
+  emailId    Int
   token      String
-  messageId  String       @unique 
+  messageId  String       @unique
   to         String?
   from       String?
   subject    String?
@@ -47,14 +47,22 @@ model Email {
   domain     Domain       @relation(fields: [domainId], references: [id])
 
 
-  deliveryStatus String?  
+  deliveryStatus String?
   sentAt         DateTime?
   firstOpenAt    DateTime?
   firstClickAt   DateTime?
 
-  events     EmailEvent[] 
+  events     EmailEvent[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+
+  @@index([domainId])
+  @@index([domainId, sentAt])
+  @@index([domainId, createdAt])
+  @@index([to])
+  @@index([from])
+  @@index([subject])
+  @@index([sentAt])
 }
 
 model EmailEvent {

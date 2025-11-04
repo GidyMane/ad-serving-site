@@ -203,29 +203,12 @@ export default function MessagesPage() {
 
   const exportMessages = async () => {
     try {
-      // Fetch all messages for export (without pagination)
-      const params = new URLSearchParams()
-      if (searchTerm) params.append('search', searchTerm)
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-      params.append('limit', '10000') // Large limit to get all results
-
-      // Set date range
-      if (dateRange !== 'all') {
-        const days = parseInt(dateRange)
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - days)
-        params.append('startDate', startDate.toISOString())
+      if (!messagesData?.messages.length) {
+        setError('No messages to export')
+        return
       }
 
-      const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
-      if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
-      const response = await fetch(`/api/dashboard/messages?${params.toString()}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch data for export')
-      }
-      const data = await response.json()
-
-      // Create CSV content
+      // Create CSV content from current data (respecting filters)
       const csvHeaders = [
         'Message ID',
         'Recipient',
@@ -241,7 +224,7 @@ export default function MessagesPage() {
         'Total Events'
       ]
 
-      const csvRows = data.messages.map((message: EmailMessage) => [
+      const csvRows = messagesData.messages.map((message: EmailMessage) => [
         message.messageId,
         message.recipient,
         message.sender,
@@ -272,6 +255,8 @@ export default function MessagesPage() {
       link.click()
       document.body.removeChild(link)
 
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(url), 100)
     } catch (err) {
       console.error('Error exporting messages data:', err)
       setError('Failed to export messages data')

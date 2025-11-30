@@ -100,10 +100,14 @@ const searchFilter = search
   : {};  
 
 // Build WHERE clause without date filter  
-const whereClause: any = {  
+// const whereClause: any = {  
+//   domainId: { in: domainIds },  
+//   ...searchFilter,  
+// };  
+const whereClause: Prisma.EmailWhereInput = {  
   domainId: { in: domainIds },  
   ...searchFilter,  
-};  
+};
 
 // Fetch total count and paginated emails  
 const [totalCount, emails] = await Promise.all([  

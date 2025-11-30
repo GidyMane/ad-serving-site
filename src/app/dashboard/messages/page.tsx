@@ -131,12 +131,7 @@ export default function MessagesPage() {
       params.append('page', currentPage.toString())
       params.append('limit', '20')
 
-      if (dateRange !== 'all') {
-        const days = parseInt(dateRange)
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - days)
-        params.append('startDate', startDate.toISOString())
-      }
+    
 
       const selectedId = typeof window !== 'undefined' ? localStorage.getItem('selectedDomainId') : null
       if (selectedId && selectedId !== 'all') params.append('domainId', selectedId)
@@ -167,6 +162,7 @@ export default function MessagesPage() {
       const response = await fetch(`/api/dashboard/messages?${cacheKey}`, {
         signal: abortControllerRef.current.signal,
       })
+      console.log(response, "response")
 
       if (!response.ok) {
         throw new Error('Failed to fetch messages')

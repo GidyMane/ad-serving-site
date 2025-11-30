@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import CronManagement from "@/components/cron-management"
+import { useKindeAuth, useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs"
 
 interface EmailStats {
   totalSent: number;
@@ -109,6 +110,14 @@ export default function DashboardOverview() {
   const [audienceData, setAudienceData] = useState<AudienceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const {getAccessTokenRaw} = useKindeBrowserClient()
+
+  const accessToken = getAccessTokenRaw()
+
+  console.log(accessToken)
+
+
 
   // Fetch data from APIs
   useEffect(() => {

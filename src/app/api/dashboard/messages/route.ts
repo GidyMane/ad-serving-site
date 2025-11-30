@@ -104,14 +104,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Build date filter
-    const dateFilter: { gte?: Date; lte?: Date } = {};
-    if (startDate) dateFilter.gte = new Date(startDate);
-    if (endDate) dateFilter.lte = new Date(endDate);
-    if (!startDate && !endDate) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      dateFilter.gte = thirtyDaysAgo;
-    }
+    // const dateFilter: { gte?: Date; lte?: Date } = {};
+    // if (startDate) dateFilter.gte = new Date(startDate);
+    // if (endDate) dateFilter.lte = new Date(endDate);
+    // if (!startDate && !endDate) {
+    //   const thirtyDaysAgo = new Date();
+    //   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    //   dateFilter.gte = thirtyDaysAgo;
+    // }
 
     // Build search filter
     const searchFilter = search

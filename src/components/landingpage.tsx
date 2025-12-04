@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Mail } from 'lucide-react'
 import { LoginLink } from "@kinde-oss/kinde-auth-nextjs"
+import { AdModal } from "@/components/ad-modal"
 
 export function LandingPage() {
   const currentYear = new Date().getFullYear()

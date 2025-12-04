@@ -3,23 +3,12 @@
 import { Button } from "@/components/ui/button"
 import { Mail } from 'lucide-react'
 import { LoginLink } from "@kinde-oss/kinde-auth-nextjs"
-import { AdModal } from "@/components/ad-modal"
 
 export function LandingPage() {
   const currentYear = new Date().getFullYear()
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Ad Modal */}
-      <AdModal
-        headline="Unlock Your Email Marketing Potential"
-        description="Get started with WSDMailer today and gain complete insights into your email campaigns."
-        ctaText="Access Dashboard"
-        ctaLink="/api/auth/login"
-        imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80"
-        delayMs={2500}
-      />
-
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

@@ -121,7 +121,7 @@
   }
 }
 
-/* Ad Modal Animations */
+/* Ad Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -251,6 +251,97 @@
   text-decoration: none;
 }
 
+/* Global Ad Wall Styles */
+.global-ad-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-in-out;
+  overflow-y: auto;
+}
+
+.global-ad-content {
+  position: relative;
+  background-color: var(--card);
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.4s ease-out;
+  margin: auto;
+}
+
+.global-ad-image-wrapper {
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+}
+
+.global-ad-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.global-ad-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 0.375rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #000;
+}
+
+.global-ad-close:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.global-ad-text-content {
+  padding: 2.5rem;
+}
+
+.global-ad-headline {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  color: var(--card-foreground);
+}
+
+.global-ad-description {
+  font-size: 1rem;
+  color: var(--muted-foreground);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.global-ad-cta-wrapper {
+  margin-top: 2rem;
+}
+
+.global-ad-cta-wrapper a {
+  text-decoration: none;
+}
+
 /* Mobile Responsive */
 @media (max-width: 640px) {
   .ad-modal-backdrop {
@@ -278,6 +369,35 @@
   }
 
   .ad-modal-close {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .global-ad-backdrop {
+    padding: 0.5rem;
+  }
+
+  .global-ad-content {
+    max-width: 100%;
+  }
+
+  .global-ad-image-wrapper {
+    height: 200px;
+  }
+
+  .global-ad-text-content {
+    padding: 1.5rem;
+  }
+
+  .global-ad-headline {
+    font-size: 1.5rem;
+  }
+
+  .global-ad-description {
+    font-size: 0.875rem;
+  }
+
+  .global-ad-close {
     width: 2rem;
     height: 2rem;
   }

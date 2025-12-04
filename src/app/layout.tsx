@@ -66,6 +66,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <GlobalAdWall
+          headline="Unlock Your Email Marketing Potential"
+          description="Get started with WSDMailer today and gain complete insights into your email campaigns."
+          ctaText="Access Dashboard"
+          ctaLink="/api/auth/login"
+          imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80"
+          delayMs={2500}
+        />
         {children}
       </body>
     </html>

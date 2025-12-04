@@ -207,7 +207,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\User\\Emailit_Tracker\\generated\\prisma",
+      "value": "/root/app/code/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -216,12 +216,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "windows",
+        "value": "debian-openssl-3.0.x",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\User\\Emailit_Tracker\\prisma\\schema.prisma",
+    "sourceFilePath": "/root/app/code/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
